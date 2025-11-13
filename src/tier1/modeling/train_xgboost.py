@@ -1,10 +1,15 @@
 import pandas as pd
 import numpy as np
 import xgboost as xgb
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, RandomizedSearchCV, TimeSeriesSplit
 from sklearn.metrics import classification_report
+from sklearn.utils.class_weight import compute_class_weight
 import os
+import sys
 import joblib
+
+# Add the project root to the Python path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
 
 def get_tri_barrier_labels(close, look_forward=24, upper_pct=0.02, lower_pct=0.01):
     """
@@ -49,8 +54,14 @@ def train_baseline_model(feature_path, model_dir):
     df = df.iloc[:-24]
 
     # 3. Define Features (X) and Labels (y)
-    # We will use all columns as features except the raw price data of our target asset
-    features = [c for c in df.columns if not c.startswith('btc_') and c != 'label']
+    # Based on SHAP analysis, we will use only the top 4 most predictive features.
+    features = [
+        'gld_hurst',
+        'gld_rsi',
+        'eur_close_kalman',
+        'gld_close_kalman'
+    ]
+    print(f"\nUsing refined feature set with {len(features)} features.")
     X = df[features]
     y = df['label']
 
@@ -68,21 +79,55 @@ def train_baseline_model(feature_path, model_dir):
 
     print(f"\\nTraining on {len(X_train)} samples, testing on {len(X_test)} samples.")
 
-    # 5. Train XGBoost Model
-    print("\\nTraining XGBoost model...")
+    # 5. Hyperparameter Tuning with RandomizedSearchCV
+    print("\nStarting hyperparameter tuning with RandomizedSearchCV...")
+
+    # Define the parameter grid to search
+    param_grid = {
+        'n_estimators': [100, 200, 300, 400],
+        'learning_rate': [0.01, 0.05, 0.1, 0.2],
+        'max_depth': [3, 5, 7, 10],
+        'subsample': [0.7, 0.8, 0.9, 1.0],
+        'colsample_bytree': [0.7, 0.8, 0.9, 1.0],
+        'gamma': [0, 0.1, 0.2, 0.5]
+    }
+
+    # Use TimeSeriesSplit for cross-validation
+    tscv = TimeSeriesSplit(n_splits=5)
+
+    # Calculate class weights for the entire training set
+    classes_weights = compute_class_weight('balanced', classes=np.unique(y_train), y=y_train)
+    sample_weights = np.vectorize({i: w for i, w in enumerate(classes_weights)}.get)(y_train)
+
+    # Create the XGBoost classifier
     model = xgb.XGBClassifier(
         objective='multi:softmax',
         num_class=3,
         eval_metric='mlogloss',
-        use_label_encoder=False,
-        n_estimators=200,
-        learning_rate=0.1,
-        max_depth=5,
-        subsample=0.8,
-        colsample_bytree=0.8,
-        gamma=0.1
+        use_label_encoder=False
     )
-    model.fit(X_train, y_train)
+
+    # Set up RandomizedSearchCV
+    random_search = RandomizedSearchCV(
+        model,
+        param_distributions=param_grid,
+        n_iter=50,  # Number of parameter settings that are sampled
+        scoring='f1_weighted',
+        n_jobs=-1,  # Use all available cores
+        cv=tscv,
+        verbose=1,
+        random_state=42
+    )
+
+    # Fit the model
+    random_search.fit(X_train, y_train, sample_weight=sample_weights)
+
+    print("\n--- Hyperparameter Tuning Complete ---")
+    print(f"Best parameters found: {random_search.best_params_}")
+    print(f"Best f1_weighted score: {random_search.best_score_}")
+
+    # Use the best model for evaluation
+    model = random_search.best_estimator_
 
     # 6. Evaluate Model
     print("\\n--- Model Evaluation ---")
@@ -99,3 +144,9 @@ if __name__ == '__main__':
     FEATURE_PATH = 'data/processed/features_03_final.parquet'
     MODEL_DIR = 'src/tier1/modeling'
     train_baseline_model(FEATURE_PATH, MODEL_DIR)
+
+    # Run backtest evaluation after training
+    print("\n--- Running Backtest Evaluation ---")
+    from src.tier1.evaluation.backtest import run_backtest
+    MODEL_PATH = os.path.join(MODEL_DIR, 'xgboost_baseline_v1.json')
+    run_backtest(FEATURE_PATH, MODEL_PATH)
