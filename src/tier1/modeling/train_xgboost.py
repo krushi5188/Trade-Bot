@@ -3,8 +3,13 @@ import numpy as np
 import xgboost as xgb
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
+from sklearn.utils.class_weight import compute_class_weight
 import os
+import sys
 import joblib
+
+# Add the project root to the Python path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
 
 def get_tri_barrier_labels(close, look_forward=24, upper_pct=0.02, lower_pct=0.01):
     """
@@ -49,8 +54,14 @@ def train_baseline_model(feature_path, model_dir):
     df = df.iloc[:-24]
 
     # 3. Define Features (X) and Labels (y)
-    # We will use all columns as features except the raw price data of our target asset
-    features = [c for c in df.columns if not c.startswith('btc_') and c != 'label']
+    # Based on SHAP analysis, we will use only the top 4 most predictive features.
+    features = [
+        'gld_hurst',
+        'gld_rsi',
+        'eur_close_kalman',
+        'gld_close_kalman'
+    ]
+    print(f"\nUsing refined feature set with {len(features)} features.")
     X = df[features]
     y = df['label']
 
@@ -68,8 +79,20 @@ def train_baseline_model(feature_path, model_dir):
 
     print(f"\\nTraining on {len(X_train)} samples, testing on {len(X_test)} samples.")
 
-    # 5. Train XGBoost Model
-    print("\\nTraining XGBoost model...")
+    # 5. Calculate Class Weights and Train XGBoost Model
+    print("\nCalculating class weights and training XGBoost model...")
+
+    # Calculate class weights
+    classes_weights = compute_class_weight(
+        class_weight='balanced',
+        classes=np.unique(y_train),
+        y=y_train
+    )
+
+    # Create a dictionary mapping class label to weight
+    weights = {i: classes_weights[i] for i in range(len(classes_weights))}
+    print(f"Applying class weights: {weights}")
+
     model = xgb.XGBClassifier(
         objective='multi:softmax',
         num_class=3,
@@ -80,9 +103,15 @@ def train_baseline_model(feature_path, model_dir):
         max_depth=5,
         subsample=0.8,
         colsample_bytree=0.8,
-        gamma=0.1
+        gamma=0.1,
+        # The scale_pos_weight is for binary classification. For multi-class, need to use sample_weight
+        # We will pass the sample weights during the model fitting process.
     )
-    model.fit(X_train, y_train)
+
+    # Create sample weights array
+    sample_weights = np.vectorize(weights.get)(y_train)
+
+    model.fit(X_train, y_train, sample_weight=sample_weights)
 
     # 6. Evaluate Model
     print("\\n--- Model Evaluation ---")
@@ -99,3 +128,9 @@ if __name__ == '__main__':
     FEATURE_PATH = 'data/processed/features_03_final.parquet'
     MODEL_DIR = 'src/tier1/modeling'
     train_baseline_model(FEATURE_PATH, MODEL_DIR)
+
+    # Run backtest evaluation after training
+    print("\n--- Running Backtest Evaluation ---")
+    from src.tier1.evaluation.backtest import run_backtest
+    MODEL_PATH = os.path.join(MODEL_DIR, 'xgboost_baseline_v1.json')
+    run_backtest(FEATURE_PATH, MODEL_PATH)

@@ -25,6 +25,8 @@ matplotlib==3.8.2
 
 # Modeling
 xgboost==2.0.3
+backtesting==0.3.3
+shap==0.45.0
 
 # Communication Bridge
 pyzmq==25.1.2
