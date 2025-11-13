@@ -1,0 +1,27 @@
+# Core Data Science & Manipulation
+pandas==2.1.2
+numpy==1.26.1
+scikit-learn==1.3.2
+pyarrow==14.0.0
+
+# Data Collection
+ccxt==4.1.3
+requests==2.31.0
+beautifulsoup4==4.12.2
+feedparser==6.0.10
+pandas_datareader==0.10.0
+
+# NLP for Sentiment Analysis
+transformers==4.34.1
+torch==2.3.0
+sentencepiece==0.1.99
+
+# Feature Engineering
+pykalman==0.9.5
+hurst==0.0.5
+
+# Modeling
+xgboost==2.0.1
+
+# Communication Bridge
+pyzmq==25.1.2
