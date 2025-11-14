@@ -7,63 +7,45 @@ import statsmodels.api as sm
 import os
 import gc
 import time
-from numba import jit
 
 # --- Robustness & Checkpointing ---
 def save_checkpoint_gpu(df, name):
     """Saves a checkpoint of the cuDF dataframe, ensuring the directory exists."""
     checkpoint_path = f'/content/drive/MyDrive/trading-ai/data/processed/checkpoint_{name}_gpu.parquet'
-    # FIX: Explicitly create the directory before saving.
     os.makedirs(os.path.dirname(checkpoint_path), exist_ok=True)
     df.to_parquet(checkpoint_path)
     print(f"[{time.ctime()}] GPU Checkpoint saved: {checkpoint_path}")
 
-# --- CPU-Bound Function (for statsmodels) ---
+# --- CPU-Bound Functions ---
 def apply_kalman_filter_on_cpu(series_pd):
-    """
-    Applies the statsmodels Kalman Filter on a pandas Series on the CPU.
-    """
+    """Applies the statsmodels Kalman Filter on a pandas Series on the CPU."""
     resampled_series = series_pd.resample('h').ffill()
     if resampled_series.isnull().all():
         return resampled_series
     model = sm.tsa.UnobservedComponents(resampled_series.dropna(), 'local level')
     result = model.fit(disp=False)
-
     smoothed_values = result.level.smoothed
     smoothed_series = pd.Series(smoothed_values, index=resampled_series.dropna().index)
-
     return smoothed_series.reindex(resampled_series.index)
 
-# --- Numba-Accelerated Hurst Exponent (for pandas .apply()) ---
-@jit(nopython=True)
-def hurst_numba(ts):
-    """
-    Calculates the Hurst Exponent using Numba for acceleration.
-    """
+# FIX: Removed the incompatible Numba decorator. This function will run on the CPU.
+def hurst_on_cpu(ts):
+    """Calculates the Hurst Exponent on a pandas Series."""
+    ts = np.asarray(ts)
     if len(ts) < 100:
         return 0.5
 
-    lags = np.arange(2, 100)
-    tau = np.zeros(len(lags), dtype=np.float64)
+    lags = range(2, 100)
+    tau = []
+    for lag in lags:
+        diff = np.subtract(ts[lag:], ts[:-lag])
+        std_dev = np.std(diff)
+        if std_dev == 0:
+            return 0.5
+        tau.append(np.sqrt(std_dev))
 
-    for i, lag in enumerate(lags):
-        diff = ts[lag:] - ts[:-lag]
-        if len(diff) > 0:
-            std_dev = np.std(diff)
-            if std_dev > 0:
-                tau[i] = np.sqrt(std_dev)
-
-    tau = tau[tau > 0]
-    if len(tau) < 2:
-        return 0.5
-
-    log_lags = np.log(np.arange(2, len(tau) + 2))
-    log_tau = np.log(tau)
-
-    A = np.vstack((log_lags, np.ones(len(log_lags)))).T
-    slope, _ = np.linalg.lstsq(A, log_tau, rcond=None)[0]
-
-    return slope * 2.0
+    poly = np.polyfit(np.log(lags), np.log(tau), 1)
+    return poly[0] * 2.0
 
 # --- Main GPU-Accelerated Execution ---
 if __name__ == '__main__':
@@ -90,9 +72,10 @@ if __name__ == '__main__':
         save_checkpoint_gpu(df_gpu, 'kalman_filters_complete')
 
         for col in ['btc_close', 'eur_close', 'gld_close']:
-            print(f"[{time.ctime()}] Processing Hurst Exponent for {col} (GPU -> CPU-Numba -> GPU)...")
+            print(f"[{time.ctime()}] Processing Hurst Exponent for {col} (GPU -> CPU -> GPU)...")
             series_pd = df_gpu[col].to_pandas()
-            hurst_values_pd = series_pd.rolling(window=100).apply(hurst_numba, raw=True)
+            # Call the corrected CPU function
+            hurst_values_pd = series_pd.rolling(window=100).apply(hurst_on_cpu, raw=True)
             df_gpu[f'{col}_hurst'] = cudf.from_pandas(hurst_values_pd)
             gc.collect()
         save_checkpoint_gpu(df_gpu, 'hurst_exponent_complete')
