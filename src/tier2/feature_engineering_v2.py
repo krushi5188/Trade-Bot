@@ -11,7 +11,6 @@ import time
 
 def save_checkpoint(df, name):
     """Saves a checkpoint of the dataframe to Google Drive."""
-    # Assuming this script runs in a Colab environment with Drive mounted
     checkpoint_path = f'/content/drive/MyDrive/trading-ai/data/processed/checkpoint_{name}.parquet'
     df.to_parquet(checkpoint_path)
     print(f"[{time.ctime()}] Checkpoint saved: {checkpoint_path}")
@@ -33,23 +32,34 @@ def apply_kalman_filter_sm(series):
     return smoothed
 
 def hurst(ts):
-    """Calculates the Hurst Exponent."""
+    """Calculates the Hurst Exponent in a numerically stable way."""
     ts = np.asarray(ts, dtype=np.float32)
-    if len(ts) < 100: return 0.5
+    if len(ts) < 100:
+        return 0.5
+
     lags = range(2, 100)
-    tau = [np.sqrt(np.std(np.subtract(ts[lag:], ts[:-lag]))) for lag in lags]
-    tau = [val for val in tau if val > 0]
-    if not tau: return 0.5
-    poly = np.polyfit(np.log(range(2, len(tau) + 2)), np.log(tau), 1)
+    tau = []
+    for lag in lags:
+        # Calculate the standard deviation of the lagged differences
+        diff = np.subtract(ts[lag:], ts[:-lag])
+        std_dev = np.std(diff)
+
+        # If the standard deviation is zero, the series is flat. Return 0.5 (random walk).
+        if std_dev == 0:
+            return 0.5
+
+        tau.append(np.sqrt(std_dev))
+
+    # Perform a log-log regression to get the slope (Hurst exponent)
+    poly = np.polyfit(np.log(lags), np.log(tau), 1)
     return poly[0] * 2.0
 
 # --- Main Execution ---
 
 if __name__ == '__main__':
     try:
-        # --- Time Monitoring Setup ---
         start_time = time.time()
-        max_runtime = 11 * 3600  # 11-hour safe margin for Colab's 12-hour limit
+        max_runtime = 11 * 3600
 
         print(f"[{time.ctime()}] Starting robust, memory-optimized feature engineering...")
 
@@ -60,8 +70,6 @@ if __name__ == '__main__':
 
         df = pd.read_parquet(lean_filepath)
         print(f"[{time.ctime()}] Lean dataset loaded.")
-
-        # --- Feature Processing with Checkpoints ---
 
         # Kalman Filters
         for col in ['btc_close', 'eur_close', 'gld_close']:
@@ -87,7 +95,6 @@ if __name__ == '__main__':
         df['sentiment_adjusted_by_vol'] = (df['sentiment_score'] / df['btc_volatility']).astype(np.float32)
         save_checkpoint(df, 'interaction_features_complete')
 
-        # --- Finalization ---
         print(f"[{time.ctime()}] Final cleaning and NaN filling...")
         df.replace([np.inf, -np.inf], np.nan, inplace=True)
         df.fillna(method='ffill', inplace=True)
@@ -97,7 +104,6 @@ if __name__ == '__main__':
         df.to_parquet(output_filepath)
         print(f"[{time.ctime()}] Final dataset saved.")
 
-        # --- Runtime Check ---
         elapsed_time = time.time() - start_time
         print(f"[{time.ctime()}] Total execution time: {elapsed_time / 3600:.2f} hours.")
         if elapsed_time > max_runtime:
