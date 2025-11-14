@@ -1,0 +1,26 @@
+# FOSS AI Trading System - Tier 1 & 2 Dependencies
+
+# Core Data Science & ML
+pandas==2.2.2
+numpy==1.26.4
+scikit-learn==1.5.1
+xgboost==2.1.0
+statsmodels==0.14.2
+lightgbm==4.4.0 # Added for alternative model experiments
+
+# Data Collection APIs
+ccxt==4.3.50
+alpha-vantage==2.3.1
+requests==2.32.3 # For MarketAux API calls
+
+# Web Scraping & NLP
+selenium==4.22.0
+beautifulsoup4==4.12.3
+transformers==4.42.4
+torch==2.3.1
+sentencepiece==0.2.0 # Often a dependency for transformers
+
+# Model Analysis & Explainability
+shap==0.45.1
+matplotlib==3.9.1
+seaborn==0.13.2
