@@ -11,8 +11,10 @@ from numba import jit
 
 # --- Robustness & Checkpointing ---
 def save_checkpoint_gpu(df, name):
-    """Saves a checkpoint of the cuDF dataframe."""
+    """Saves a checkpoint of the cuDF dataframe, ensuring the directory exists."""
     checkpoint_path = f'/content/drive/MyDrive/trading-ai/data/processed/checkpoint_{name}_gpu.parquet'
+    # FIX: Explicitly create the directory before saving.
+    os.makedirs(os.path.dirname(checkpoint_path), exist_ok=True)
     df.to_parquet(checkpoint_path)
     print(f"[{time.ctime()}] GPU Checkpoint saved: {checkpoint_path}")
 
@@ -27,12 +29,9 @@ def apply_kalman_filter_on_cpu(series_pd):
     model = sm.tsa.UnobservedComponents(resampled_series.dropna(), 'local level')
     result = model.fit(disp=False)
 
-    # FIX: The result is a NumPy array, not a pandas Series.
-    # We must wrap it in a Series with the correct index.
     smoothed_values = result.level.smoothed
     smoothed_series = pd.Series(smoothed_values, index=resampled_series.dropna().index)
 
-    # Reindex to the full resampled index to ensure alignment.
     return smoothed_series.reindex(resampled_series.index)
 
 # --- Numba-Accelerated Hurst Exponent (for pandas .apply()) ---
