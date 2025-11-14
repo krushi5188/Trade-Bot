@@ -1,6 +1,7 @@
 # This file specifies the Python dependencies for the project.
 # We are using flexible version numbers to ensure compatibility with
-# the Google Colab environment.
+# the Google Colab environment, with a specific pin for scipy to
+# prevent known dependency conflicts.
 
 pandas
 numpy
@@ -19,3 +20,4 @@ torch
 sentencepiece
 ccxt
 pyarrow
+scipy<1.16  # Pinning scipy to avoid ImportError with statsmodels
