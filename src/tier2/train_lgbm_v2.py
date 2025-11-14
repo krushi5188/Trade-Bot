@@ -58,7 +58,8 @@ def train_lightgbm_on_v2_features():
         'num_leaves': 31,
         'learning_rate': 0.05,
         'feature_fraction': 0.9,
-        'verbose': -1
+        'verbose': -1,
+        'device': 'gpu'  # Enable GPU acceleration
     }
 
     model = lgb.train(params, lgb_train, num_boost_round=100)
