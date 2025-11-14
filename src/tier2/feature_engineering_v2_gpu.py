@@ -21,21 +21,25 @@ def apply_kalman_filter_on_cpu(series_pd):
     """
     Applies the statsmodels Kalman Filter on a pandas Series on the CPU.
     """
-    resampled_series = series_pd.resample('H').ffill()
-    # Ensure there are no NaNs before fitting the model
+    resampled_series = series_pd.resample('h').ffill()
     if resampled_series.isnull().all():
         return resampled_series
     model = sm.tsa.UnobservedComponents(resampled_series.dropna(), 'local level')
     result = model.fit(disp=False)
-    smoothed = result.level.smoothed
-    return smoothed.reindex(resampled_series.index)
+
+    # FIX: The result is a NumPy array, not a pandas Series.
+    # We must wrap it in a Series with the correct index.
+    smoothed_values = result.level.smoothed
+    smoothed_series = pd.Series(smoothed_values, index=resampled_series.dropna().index)
+
+    # Reindex to the full resampled index to ensure alignment.
+    return smoothed_series.reindex(resampled_series.index)
 
 # --- Numba-Accelerated Hurst Exponent (for pandas .apply()) ---
 @jit(nopython=True)
 def hurst_numba(ts):
     """
     Calculates the Hurst Exponent using Numba for acceleration.
-    This function is designed to be used with .rolling().apply() on a pandas Series.
     """
     if len(ts) < 100:
         return 0.5
@@ -57,7 +61,6 @@ def hurst_numba(ts):
     log_lags = np.log(np.arange(2, len(tau) + 2))
     log_tau = np.log(tau)
 
-    # Manual linear regression (Numba compatible)
     A = np.vstack((log_lags, np.ones(len(log_lags)))).T
     slope, _ = np.linalg.lstsq(A, log_tau, rcond=None)[0]
 
@@ -76,23 +79,17 @@ if __name__ == '__main__':
         lean_filepath = os.path.join(PROCESSED_DIR, 'master_dataset_lean.parquet')
         output_filepath = os.path.join(PROCESSED_DIR, 'features_v2_final_gpu.parquet')
 
-        # Load initial data directly onto the GPU
         df_gpu = cudf.read_parquet(lean_filepath)
         print(f"[{time.ctime()}] Lean dataset loaded onto GPU. Shape: {df_gpu.shape}")
 
-        # --- Kalman Filters (Hybrid CPU/GPU) ---
         for col in ['btc_close', 'eur_close', 'gld_close']:
             print(f"[{time.ctime()}] Processing Kalman Filter for {col} (GPU -> CPU -> GPU)...")
-            # 1. Move data from GPU to CPU
             series_pd = df_gpu[col].to_pandas()
-            # 2. Run calculation on CPU
             smoothed_pd = apply_kalman_filter_on_cpu(series_pd)
-            # 3. Move result from CPU back to GPU
             df_gpu[f'{col}_kalman'] = cudf.from_pandas(smoothed_pd)
             gc.collect()
         save_checkpoint_gpu(df_gpu, 'kalman_filters_complete')
 
-        # --- Hurst Exponent (Hybrid CPU-Numba/GPU) ---
         for col in ['btc_close', 'eur_close', 'gld_close']:
             print(f"[{time.ctime()}] Processing Hurst Exponent for {col} (GPU -> CPU-Numba -> GPU)...")
             series_pd = df_gpu[col].to_pandas()
@@ -101,7 +98,6 @@ if __name__ == '__main__':
             gc.collect()
         save_checkpoint_gpu(df_gpu, 'hurst_exponent_complete')
 
-        # --- Interaction Features (Full GPU) ---
         print(f"[{time.ctime()}] Processing interaction features on GPU...")
         df_gpu['sentiment_score'] = df_gpu['sentiment_score'].astype('float32')
         df_gpu['btc_hurst'] = df_gpu['btc_hurst'].astype('float32')
@@ -115,7 +111,6 @@ if __name__ == '__main__':
         df_gpu['sentiment_adjusted_by_vol'] = df_gpu['sentiment_score'] / df_gpu['btc_volatility']
         save_checkpoint_gpu(df_gpu, 'interaction_features_complete')
 
-        # --- Finalization (on GPU) ---
         print(f"[{time.ctime()}] Final cleaning and NaN filling on GPU...")
         df_gpu = df_gpu.replace([np.inf, -np.inf], np.nan)
         df_gpu = df_gpu.fillna(method='ffill')
