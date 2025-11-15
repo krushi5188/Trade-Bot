@@ -45,9 +45,9 @@ def run_feature_engineering_pipeline():
 
     print(f"[{time.ctime()}] --- Pipeline Complete ---")
 
-def train_challenger_model(use_gpu=False):
+def train_challenger_model():
     """
-    Trains a new challenger model on the latest data.
+    Trains a new challenger model on the latest data using the CPU.
     """
     print(f"[{time.ctime()}] --- Training Challenger Model ---")
 
@@ -107,7 +107,7 @@ def train_challenger_model(use_gpu=False):
         'learning_rate': 0.05,
         'feature_fraction': 0.9,
         'verbose': -1,
-        'device': 'gpu' if use_gpu else 'cpu'
+        'device': 'cpu'
     }
 
     model = lgb.train(params, lgb_train, num_boost_round=100)
@@ -268,7 +268,7 @@ def main():
     run_feature_engineering_pipeline()
 
     # 2. Train the challenger model
-    challenger_model = train_challenger_model(use_gpu=True)
+    challenger_model = train_challenger_model()
 
     # 3. Backtest the challenger model
     challenger_metrics = backtest_challenger_model(challenger_model)

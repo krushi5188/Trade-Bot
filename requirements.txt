@@ -21,3 +21,4 @@ sentencepiece
 ccxt
 pyarrow
 scipy<1.16  # Pinning scipy to avoid ImportError with statsmodels
+statsmodels
