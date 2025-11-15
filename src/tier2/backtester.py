@@ -81,10 +81,10 @@ class VectorizedBacktester:
         max_drawdown = self.calculate_max_drawdown()
 
         metrics = {
-            'Total Return': f"{total_return:.2%}",
-            'Annualized Return': f"{annualized_return:.2%}",
-            'Sharpe Ratio': f"{sharpe_ratio:.2f}",
-            'Max Drawdown': f"{max_drawdown:.2%}"
+            'Total Return (%)': total_return * 100,
+            'Annualized Return (%)': annualized_return * 100,
+            'Sharpe Ratio': sharpe_ratio if np.isfinite(sharpe_ratio) else 0.0,
+            'Max Drawdown (%)': max_drawdown * 100
         }
         return metrics
 
