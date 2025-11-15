@@ -4,31 +4,44 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
+# Import the new StrategyOverlay
+from .strategy_overlay import StrategyOverlay
+
 class VectorizedBacktester:
     """
     A class to perform a vectorized backtest of a trading strategy.
     """
 
-    def __init__(self, price_data, signals, initial_capital=100000):
+    def __init__(self, price_data, signals, initial_capital=100000, strategy_overlay=None):
         """
         Args:
             price_data (pd.Series): Series of prices for the asset.
             signals (pd.Series): Series of trading signals (-1, 0, 1).
             initial_capital (float): The starting capital for the backtest.
+            strategy_overlay (StrategyOverlay, optional): An object to apply
+                                                       strategy overlays.
         """
         self.price_data = price_data
         self.signals = signals
         self.initial_capital = initial_capital
+        self.strategy_overlay = strategy_overlay # Store the overlay object
         self.positions = self.generate_positions()
         self.portfolio = self.backtest_portfolio()
 
     def generate_positions(self):
         """
         Generates a series of positions based on the signals.
-        For this simple version, we assume 1 unit of asset per trade.
+        If a strategy_overlay is provided, it uses it for position sizing.
         """
-        positions = self.signals.shift(1).fillna(0) # Shift to avoid lookahead bias
-        return positions
+        if self.strategy_overlay:
+            # Use the overlay to get volatility-adjusted positions
+            positions = self.strategy_overlay.get_volatility_adjusted_positions(self.signals)
+        else:
+            # Default to 1 unit of asset per trade
+            positions = self.signals
+
+        # Shift positions to avoid lookahead bias in all cases
+        return positions.shift(1).fillna(0)
 
     def backtest_portfolio(self):
         """

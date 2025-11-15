@@ -1,119 +1,96 @@
-# This script is the next generation of our feature engineering pipeline.
+# FINAL DIAGNOSTIC SCRIPT - to find the root cause of the KeyError
 
 import pandas as pd
 import numpy as np
 import statsmodels.api as sm
 import os
 import time
-from functools import lru_cache
-from numpy.lib.stride_tricks import as_strided
 
-def apply_kalman_filter_sm(series):
-    """Applies a Kalman Filter to a time series for smoothing."""
-    series_with_freq = series.asfreq('h')
-    model = sm.tsa.UnobservedComponents(series_with_freq, 'local level')
-    result = model.fit(disp=False)
-    smoothed = result.level.smoothed
-    return smoothed
-
-@lru_cache(maxsize=None)
-def hurst(ts_tuple):
-    """Calculates the Hurst Exponent of a time series."""
-    ts = np.array(ts_tuple)
+def hurst_on_cpu(ts: np.ndarray) -> float:
+    """The proven, correct, and reliable CPU-based ROLLING Hurst Exponent calculation."""
+    ts = np.asarray(ts)
     if len(ts) < 100:
-        return np.nan
+        return 0.5
     lags = range(2, 100)
-    tau = [np.sqrt(np.std(np.subtract(ts[lag:], ts[:-lag]))) for lag in lags]
-    poly = np.polyfit(np.log(lags), np.log(tau), 1)
+    tau = []
+    for lag in lags:
+        diff = ts[lag:] - ts[:-lag]
+        if len(diff) == 0: continue
+        std_dev = np.std(diff)
+        if std_dev <= 0: return 0.5
+        tau.append(np.sqrt(std_dev))
+    if len(tau) < 2: return 0.5
+    poly = np.polyfit(np.log(range(2, len(tau) + 2)), np.log(tau), 1)
     return poly[0] * 2.0
 
-def rolling_window(a, window):
-    """Creates a rolling window view of a NumPy array without copying data."""
-    shape = (a.shape[0] - window + 1, window)
-    strides = (a.strides[0], a.strides[0])
-    return as_strided(a, shape=shape, strides=strides)
-
-def create_base_features(df):
-    """Applies the foundational feature engineering techniques from Tier 1."""
-    print("--- Applying Tier 1 Base Features ---")
-
-    asset_prefixes = ['btc', 'eur', 'gld']
-    for prefix in asset_prefixes:
-        close_col = f'{prefix}_close'
-        kalman_col = f'{prefix}_close_kalman'
-        print(f"Applying Kalman Filter to {close_col}...")
-        df[kalman_col] = apply_kalman_filter_sm(df[close_col])
-
-    for prefix in asset_prefixes:
-        close_col = f'{prefix}_close'
-        hurst_col = f'{prefix}_hurst'
-        print(f"Calculating rolling Hurst Exponent for {close_col} with high-performance NumPy...")
-        start_time = time.time()
-
-        window_size = 100
-        price_series = df[close_col].values
-        windows = rolling_window(price_series, window_size)
-
-        hurst_values = np.array([hurst(tuple(window)) for window in windows])
-
-        padded_hurst = np.full(df.shape[0], np.nan)
-        padded_hurst[window_size-1:] = hurst_values
-        df[hurst_col] = padded_hurst
-
-        end_time = time.time()
-        print(f"  -> Finished in {end_time - start_time:.2f} seconds.")
-
-    print("Base feature creation complete.")
-    return df
-
-def create_interaction_features(df):
-    """Engineers advanced features by capturing interactions between variables."""
-    print("\\n--- Engineering V2 Interaction Features ---")
-
-    df['sentiment_x_hurst'] = df['sentiment_score'] * df['btc_hurst']
-    print("Created feature: sentiment_score * btc_hurst")
-
-    if 'event_name' not in df.columns:
-        df['event_name'] = None
-    df['is_high_impact_event'] = (~df['event_name'].isna()).astype(int)
-
-    df['event_x_hurst'] = df['is_high_impact_event'] * df['btc_hurst']
-    print("Created feature: is_high_impact_event * btc_hurst")
-
-    df['btc_volatility'] = df['btc_close'].pct_change().rolling(window=24).std()
-    df['sentiment_adjusted_by_vol'] = df['sentiment_score'] / df['btc_volatility']
-    print("Created feature: sentiment_score / btc_volatility")
-
-    print("Interaction feature creation complete.")
-    return df
+def apply_kalman_filter_safe(series_pd: pd.Series) -> pd.Series:
+    """Safe Kalman filter with proper error handling."""
+    try:
+        resampled_series = series_pd.resample('h').ffill()
+        if len(resampled_series.dropna()) < 10: return resampled_series
+        model = sm.tsa.UnobservedComponents(resampled_series.dropna(), 'local level')
+        result = model.fit(disp=False)
+        smoothed_values = result.level.smoothed
+        smoothed_series = pd.Series(smoothed_values, index=resampled_series.dropna().index)
+        return smoothed_series.reindex(resampled_series.index, method='ffill')
+    except Exception as e:
+        print(f"Kalman filter failed: {e}, returning original series")
+        return series_pd
 
 if __name__ == '__main__':
-    # --- FIX: Run on a smaller subset of data to prevent timeout ---
-    DEBUG_MODE = True
-    # --- END FIX ---
+    try:
+        print(f"[{time.ctime()}] Starting FINAL DIAGNOSIS...")
 
-    PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-    PROCESSED_DIR = os.path.join(PROJECT_ROOT, 'data/processed')
+        PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+        PROCESSED_DIR = os.path.join(PROJECT_ROOT, 'data/processed')
+        lean_filepath = os.path.join(PROCESSED_DIR, 'master_dataset_lean.parquet')
 
-    master_filepath = os.path.join(PROCESSED_DIR, 'master_dataset.parquet')
-    df = pd.read_parquet(master_filepath)
-    print("Master Dataset Loaded.")
+        df_pd = pd.read_parquet(lean_filepath)
+        print(f"[{time.ctime()}] Dataset loaded.")
 
-    if DEBUG_MODE:
-        print("\\n*** RUNNING IN DEBUG MODE ON A SUBSET OF DATA ***")
-        df = df.tail(5000) # Use the most recent 5000 data points
+        # Kalman Filters
+        for col in ['btc_close', 'eur_close', 'gld_close']:
+            print(f"[{time.ctime()}] Processing Kalman Filter for {col}...")
+            df_pd[f'{col}_kalman'] = apply_kalman_filter_safe(df_pd[col])
 
-    df = create_base_features(df)
-    df = create_interaction_features(df)
+        # Hurst Exponent
+        print(f"[{time.ctime()}] Processing Hurst Exponent...")
+        for col in ['btc_close', 'eur_close', 'gld_close']:
+            df_pd[f'{col}_hurst'] = df_pd[col].rolling(window=100, min_periods=100).apply(hurst_on_cpu, raw=True)
 
-    print("\\nCleaning and filling NaN values...")
-    df.replace([np.inf, -np.inf], np.nan, inplace=True)
-    df.fillna(method='ffill', inplace=True)
-    df.fillna(method='bfill', inplace=True)
+        # --- DIAGNOSTIC BLOCK ---
+        print("\\n" + "="*50)
+        print("          ENTERING FINAL DIAGNOSTIC BLOCK")
+        print("="*50)
+        print(f"[{time.ctime()}] This is the state of the program RIGHT BEFORE the error occurs.")
+        print(f"[{time.ctime()}] The next step is to create the interaction features.")
 
-    output_filepath = os.path.join(PROCESSED_DIR, 'features_v2_advanced.parquet')
-    df.to_parquet(output_filepath)
+        print("\\nDataFrame Info:")
+        df_pd.info()
 
-    print(f"\\nAdvanced feature dataset (V2) saved to {output_filepath}")
-    print("\\n--- Advanced Feature Dataset Info ---")
-    df.info()
+        print("\\nDataFrame Columns:")
+        print(df_pd.columns)
+
+        if 'btc_hurst' in df_pd.columns:
+            print("\\n'btc_hurst' column EXISTS.")
+            print("Number of null values in 'btc_hurst':", df_pd['btc_hurst'].isnull().sum())
+        else:
+            print("\\nCRITICAL FAILURE: 'btc_hurst' column DOES NOT EXIST.")
+
+        print("="*50)
+        print("          NOW ATTEMPTING THE OPERATION THAT FAILS")
+        print("="*50 + "\\n")
+        # --- END DIAGNOSTIC BLOCK ---
+
+        # Interaction Features
+        print(f"[{time.ctime()}] Processing interaction features...")
+        df_pd['sentiment_score'] = pd.to_numeric(df_pd['sentiment_score'], errors='coerce').fillna(0).astype('float32')
+        df_pd['btc_hurst'] = pd.to_numeric(df_pd['btc_hurst'], errors='coerce').fillna(0.5).astype('float32') # This is the line that fails
+        df_pd['sentiment_x_hurst'] = df_pd['sentiment_score'] * df_pd['btc_hurst']
+
+        # ... the rest of the script would go here ...
+
+    except Exception as e:
+        print(f"[{time.ctime()}] AN ERROR OCCURRED. This is the traceback:")
+        import traceback
+        traceback.print_exc()
