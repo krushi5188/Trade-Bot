@@ -1,4 +1,5 @@
-# This is a memory-optimized and robust feature engineering script for long-running sessions.
+# This is the final, robust, CPU-based feature engineering script.
+# It uses the proven, correct Hurst Exponent calculation.
 
 import pandas as pd
 import numpy as np
@@ -7,107 +8,93 @@ import os
 import gc
 import time
 
-# --- Robustness Functions ---
-
-def save_checkpoint(df, name):
-    """Saves a checkpoint of the dataframe to Google Drive."""
-    checkpoint_path = f'/content/drive/MyDrive/trading-ai/data/processed/checkpoint_{name}.parquet'
-    df.to_parquet(checkpoint_path)
-    print(f"[{time.ctime()}] Checkpoint saved: {checkpoint_path}")
-
-# --- Memory-Optimized Feature Functions ---
-
-def apply_kalman_filter_sm(series):
-    """Applies a Kalman Filter with memory efficiency."""
-    series_float32 = series.astype(np.float32)
-    resampled_series = series_float32.resample('h').ffill()
-    del series_float32
-    gc.collect()
-
-    model = sm.tsa.UnobservedComponents(resampled_series, 'local level')
+# --- CPU-Bound Functions ---
+def apply_kalman_filter_on_cpu(series_pd):
+    """Applies the statsmodels Kalman Filter on a pandas Series on the CPU."""
+    resampled_series = series_pd.resample('h').ffill()
+    if resampled_series.isnull().all():
+        return resampled_series
+    model = sm.tsa.UnobservedComponents(resampled_series.dropna(), 'local level')
     result = model.fit(disp=False)
-    smoothed = result.level.smoothed.astype(np.float32)
-    del resampled_series, model, result
-    gc.collect()
-    return smoothed
+    smoothed_values = result.level.smoothed
+    smoothed_series = pd.Series(smoothed_values, index=resampled_series.dropna().index)
+    return smoothed_series.reindex(resampled_series.index)
 
-def hurst(ts):
-    """Calculates the Hurst Exponent in a numerically stable way."""
-    ts = np.asarray(ts, dtype=np.float32)
+def hurst_on_cpu(ts):
+    """
+    The proven, correct, and reliable CPU-based Hurst Exponent calculation.
+    """
+    ts = np.asarray(ts)
     if len(ts) < 100:
         return 0.5
 
     lags = range(2, 100)
     tau = []
     for lag in lags:
-        # Calculate the standard deviation of the lagged differences
-        diff = np.subtract(ts[lag:], ts[:-lag])
+        diff = ts[lag:] - ts[:-lag]
+        # This check is critical
+        if len(diff) == 0:
+            continue
         std_dev = np.std(diff)
-
-        # If the standard deviation is zero, the series is flat. Return 0.5 (random walk).
-        if std_dev == 0:
-            return 0.5
-
+        if std_dev <= 0:
+            return 0.5 # Return for flat series
         tau.append(np.sqrt(std_dev))
 
-    # Perform a log-log regression to get the slope (Hurst exponent)
-    poly = np.polyfit(np.log(lags), np.log(tau), 1)
+    if len(tau) < 2:
+        return 0.5 # Not enough data for regression
+
+    poly = np.polyfit(np.log(range(2, len(tau) + 2)), np.log(tau), 1)
     return poly[0] * 2.0
 
 # --- Main Execution ---
-
 if __name__ == '__main__':
     try:
         start_time = time.time()
-        max_runtime = 11 * 3600
 
-        print(f"[{time.ctime()}] Starting robust, memory-optimized feature engineering...")
+        print(f"[{time.ctime()}] Starting FINAL, robust feature engineering...")
 
         PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
         PROCESSED_DIR = os.path.join(PROJECT_ROOT, 'data/processed')
         lean_filepath = os.path.join(PROCESSED_DIR, 'master_dataset_lean.parquet')
         output_filepath = os.path.join(PROCESSED_DIR, 'features_v2_final.parquet')
 
-        df = pd.read_parquet(lean_filepath)
-        print(f"[{time.ctime()}] Lean dataset loaded.")
+        df_pd = pd.read_parquet(lean_filepath)
+        print(f"[{time.ctime()}] Lean dataset loaded onto CPU. Shape: {df_pd.shape}")
 
         # Kalman Filters
         for col in ['btc_close', 'eur_close', 'gld_close']:
             print(f"[{time.ctime()}] Processing Kalman Filter for {col}...")
-            df[f'{col}_kalman'] = apply_kalman_filter_sm(df[col])
+            df_pd[f'{col}_kalman'] = apply_kalman_filter_on_cpu(df_pd[col])
             gc.collect()
-        save_checkpoint(df, 'kalman_filters_complete')
 
         # Hurst Exponent
         for col in ['btc_close', 'eur_close', 'gld_close']:
             print(f"[{time.ctime()}] Processing Hurst Exponent for {col}...")
-            df[f'{col}_hurst'] = df[col].rolling(window=100).apply(hurst, raw=True).astype(np.float32)
+            df_pd[f'{col}_hurst'] = df_pd[col].rolling(window=100).apply(hurst_on_cpu, raw=True)
             gc.collect()
-        save_checkpoint(df, 'hurst_exponent_complete')
 
         # Interaction Features
         print(f"[{time.ctime()}] Processing interaction features...")
-        df['sentiment_x_hurst'] = (df['sentiment_score'] * df['btc_hurst']).astype(np.float32)
-        if 'event_name' not in df.columns: df['event_name'] = None
-        df['is_high_impact_event'] = (~df['event_name'].isna()).astype(np.int8)
-        df['event_x_hurst'] = (df['is_high_impact_event'] * df['btc_hurst']).astype(np.float32)
-        df['btc_volatility'] = df['btc_close'].pct_change().rolling(window=24).std().astype(np.float32)
-        df['sentiment_adjusted_by_vol'] = (df['sentiment_score'] / df['btc_volatility']).astype(np.float32)
-        save_checkpoint(df, 'interaction_features_complete')
+        df_pd['sentiment_score'] = df_pd['sentiment_score'].astype('float32')
+        df_pd['btc_hurst'] = df_pd['btc_hurst'].astype('float32')
+        df_pd['sentiment_x_hurst'] = df_pd['sentiment_score'] * df_pd['btc_hurst']
+        if 'event_name' not in df_pd.columns: df_pd['event_name'] = None
+        df_pd['is_high_impact_event'] = (~df_pd['event_name'].isna()).astype('int8')
+        df_pd['event_x_hurst'] = df_pd['is_high_impact_event'] * df_pd['btc_hurst']
+        df_pd['btc_volatility'] = df_pd['btc_close'].pct_change().rolling(24).std()
+        df_pd['sentiment_adjusted_by_vol'] = df_pd['sentiment_score'] / df_pd['btc_volatility']
 
         print(f"[{time.ctime()}] Final cleaning and NaN filling...")
-        df.replace([np.inf, -np.inf], np.nan, inplace=True)
-        df.fillna(method='ffill', inplace=True)
-        df.fillna(method='bfill', inplace=True)
+        df_pd.replace([np.inf, -np.inf], np.nan, inplace=True)
+        df_pd.fillna(method='ffill', inplace=True)
+        df_pd.fillna(method='bfill', inplace=True)
 
         print(f"[{time.ctime()}] Saving final dataset to {output_filepath}...")
-        df.to_parquet(output_filepath)
-        print(f"[{time.ctime()}] Final dataset saved.")
+        df_pd.to_parquet(output_filepath)
+        print(f"[{time.ctime()}] Final dataset saved successfully.")
 
         elapsed_time = time.time() - start_time
-        print(f"[{time.ctime()}] Total execution time: {elapsed_time / 3600:.2f} hours.")
-        if elapsed_time > max_runtime:
-            print(f"[{time.ctime()}] WARNING: Execution time is approaching the session limit.")
+        print(f"[{time.ctime()}] Total execution time: {elapsed_time / 60:.2f} minutes.")
 
     except Exception as e:
         print(f"[{time.ctime()}] An error occurred: {e}")
