@@ -32,6 +32,43 @@
 
 ---
 
+## Tier 3: Hyperparameter Tuning & Optimization
+**Objective:** To systematically optimize the profitable V2 LightGBM model to further enhance its performance and robustness.
+**Status:** PENDING.
+**Methodology:**
+We will use a sophisticated Bayesian optimization library, such as Optuna, to efficiently search the vast hyperparameter space. The primary objective will be to maximize the Sharpe Ratio, as this metric provides the best measure of risk-adjusted returns. The `src/tier2/tune_hyperparameters.py` script will be adapted for this purpose.
+
+**Tasks:**
+- [ ] **Define Search Space:** Identify the key hyperparameters for the LightGBM model (e.g., `num_leaves`, `learning_rate`, `n_estimators`, `reg_alpha`, `reg_lambda`, `colsample_bytree`) and define a sensible range for each.
+- [ ] **Implement Optuna Study:** Configure an Optuna study to run the search. The objective function will train a LightGBM model with a given set of hyperparameters and evaluate it using our backtesting engine, returning the Sharpe Ratio.
+- [ ] **Execute Tuning Process:** Run the optimization study for a significant number of trials to allow the algorithm to converge on the best parameter set.
+- [ ] **Train & Backtest Final Model:** Train a new model using the optimal hyperparameters found by Optuna.
+- [ ] **Generate Final Performance Report:** Run a full backtest on the optimized model and generate a final report comparing its performance against the baseline V2 model.
+
+---
+
+## Tier 4: Continuous Learning & Automated Deployment
+**Objective:** To create a fully autonomous system where the AI can retrain, evaluate, and deploy itself continuously, allowing it to adapt to changing market conditions without manual intervention.
+**Status:** PENDING.
+**Architecture: Champion/Challenger System**
+The core of this tier will be a "Champion/Challenger" model. The currently live "Champion" model will be periodically challenged by a newly trained "Challenger." The challenger will only be promoted to the new champion if it demonstrates superior performance on the most recent data.
+
+**System Components:**
+1.  **Automated Data Pipeline Scheduler:** A cron job or other scheduling service (e.g., using `APScheduler` in Python) will run the data ingestion scripts from Tier 1 on a regular basis (e.g., daily) to ensure our dataset is always up-to-date.
+2.  **Retraining Trigger:** A trigger will initiate the training of a new "Challenger" model. This can be based on a fixed schedule (e.g., the first of every month) or be event-driven (e.g., a significant dip in the current champion's performance).
+3.  **Automated Training & Backtesting Pipeline:** A master script will orchestrate the entire end-to-end process:
+    *   Execute the V2 feature engineering pipeline on the latest dataset.
+    *   Train a new LightGBM "Challenger" model using the optimal hyperparameters defined in Tier 3.
+    *   Run a full backtest on the "Challenger" model on a recent, held-out portion of the data.
+4.  **Champion/Challenger Evaluation & Promotion Logic:**
+    *   The system will programmatically compare the challenger's backtest report (focusing on Sharpe Ratio and Total Return) against the champion's last-known performance.
+    *   If the challenger's performance is statistically superior, the system will automatically promote it to the new "Champion."
+5.  **Automated Deployment:**
+    *   Upon promotion, the system will automatically replace the `lgbm_v2_model.txt` file with the new champion model file. This ensures the live trading system (or paper trading system) always uses the best-performing model.
+    *   The system will log the entire process, including the performance of both models and the reason for the promotion decision.
+
+---
+
 ## Tier 1 Progress Checklist (Archive)
 
 ### Foundational Setup
