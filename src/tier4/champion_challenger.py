@@ -72,8 +72,12 @@ def train_challenger_model():
     label_map = {-1: 0, 0: 1, 1: 2}
     df['label'] = df['label'].map(label_map)
 
-    # Exclude non-feature columns
-    features_to_exclude = [col for col in df.columns if '_close' in col or '_volume' in col or 'event_name' in col or 'label' in col]
+    # Define the exact columns to exclude to avoid accidentally removing engineered features
+    raw_price_cols = ['btc_close', 'eur_close', 'gld_close']
+    volume_cols = ['btc_volume', 'eur_volume', 'gld_volume']
+    other_cols_to_exclude = ['event_name', 'label']
+
+    features_to_exclude = raw_price_cols + volume_cols + other_cols_to_exclude
     features = [c for c in df.columns if c not in features_to_exclude]
 
     X = df[features]
@@ -148,7 +152,12 @@ def backtest_challenger_model(model):
     df = pd.read_parquet(FEATURE_PATH)
 
     # 3. Define Feature Set and Replicate Test Set
-    features_to_exclude = [col for col in df.columns if '_close' in col or '_volume' in col or 'event_name' in col or 'label' in col]
+    # Ensure this logic is identical to the training function
+    raw_price_cols = ['btc_close', 'eur_close', 'gld_close']
+    volume_cols = ['btc_volume', 'eur_volume', 'gld_volume']
+    other_cols_to_exclude = ['event_name', 'label']
+
+    features_to_exclude = raw_price_cols + volume_cols + other_cols_to_exclude
     features = [c for c in df.columns if c not in features_to_exclude]
 
     # We will backtest on the same 20% of the data used for testing in the training script.
