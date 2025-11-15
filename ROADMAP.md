@@ -61,19 +61,10 @@
 The core of this tier will be a "Champion/Challenger" model. The currently live "Champion" model will be periodically challenged by a newly trained "Challenger." The challenger will only be promoted to the new champion if it demonstrates superior performance on the most recent data.
 
 **System Components (Complete):**
-1.  **Automated Retraining Scheduler (`src/tier4/scheduler.py`):** The pipeline now includes a scheduler that uses `APScheduler` to automatically run the entire Champion/Challenger process on a weekly basis. This automates both the data update and the retraining trigger.
-2.  **Automated Training & Backtesting Pipeline (`src/tier4/champion_challenger.py`):** A master script now orchestrates the entire end-to-end process, from feature engineering to training, backtesting, and model promotion.
-3.  **Champion/Challenger Evaluation & Promotion Logic (Implemented):** The system successfully trained a new "Challenger" model which **outperformed the V2 champion** with a Sharpe Ratio of **0.059**. The challenger was automatically promoted, and its metrics were saved as the new benchmark.
-3.  **Automated Training & Backtesting Pipeline:** A master script will orchestrate the entire end-to-end process:
-    *   Execute the V2 feature engineering pipeline on the latest dataset.
-    *   Train a new LightGBM "Challenger" model using the optimal hyperparameters defined in Tier 3.
-    *   Run a full backtest on the "Challenger" model on a recent, held-out portion of the data.
-4.  **Champion/Challenger Evaluation & Promotion Logic:**
-    *   The system will programmatically compare the challenger's backtest report (focusing on Sharpe Ratio and Total Return) against the champion's last-known performance.
-    *   If the challenger's performance is statistically superior, the system will automatically promote it to the new "Champion."
-5.  **Automated Deployment:**
-    *   Upon promotion, the system will automatically replace the `lgbm_v2_model.txt` file with the new champion model file. This ensures the live trading system (or paper trading system) always uses the best-performing model.
-    *   The system will log the entire process, including the performance of both models and the reason for the promotion decision.
+1.  **Evolutionary Training Loop (`src/tier4/evolutionary_training.py`):** The core of the system is a continuous, evolutionary training loop. Instead of simple scheduling, this script actively guides the AI's learning. It uses a genetic algorithm to "breed" and "mutate" the hyperparameters of winning models, allowing the AI to intelligently explore and improve upon its own best ideas.
+2.  **Human-Readable Reporting:** After each evolutionary cycle, the system prints a clear, simple summary of the new model's performance and whether it was promoted, making it easy to track the AI's learning progress.
+3.  **Automated Training & Backtesting Pipeline (`src/tier4/champion_challenger.py`):** The underlying master script that orchestrates the end-to-end process of training, backtesting, and promotion. It is now controlled by the evolutionary training loop.
+4.  **Gene Pool (`gene_pool.json`):** A file that stores the "genes" (hyperparameters) of all past champion models, serving as the basis for future evolution.
 
 ---
 

@@ -10,6 +10,7 @@ from sklearn.utils.class_weight import compute_class_weight
 import numpy as np
 import time
 import subprocess
+import random
 
 # Add the project root to the Python path to enable imports from 'src'
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
@@ -102,17 +103,23 @@ def train_challenger_model():
     sample_weight = y_train.map(class_weight_dict)
     lgb_train = lgb.Dataset(X_train, y_train, weight=sample_weight)
 
+    # Get hyperparameters from environment variables, with defaults
+    num_leaves = int(os.environ.get('LGBM_NUM_LEAVES', 31))
+    learning_rate = float(os.environ.get('LGBM_LEARNING_RATE', 0.05))
+    feature_fraction = float(os.environ.get('LGBM_FEATURE_FRACTION', 0.9))
+
     params = {
         'objective': 'multiclass',
         'num_class': 3,
         'metric': 'multi_logloss',
         'boosting_type': 'gbdt',
-        'num_leaves': 31,
-        'learning_rate': 0.05,
-        'feature_fraction': 0.9,
+        'num_leaves': num_leaves,
+        'learning_rate': learning_rate,
+        'feature_fraction': feature_fraction,
         'verbose': -1,
         'device': 'cpu'
     }
+    print(f"\\n[{time.ctime()}] Training with parameters: {params}")
 
     model = lgb.train(params, lgb_train, num_boost_round=100)
     print(f"[{time.ctime()}] Model training complete.")

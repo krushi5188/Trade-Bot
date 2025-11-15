@@ -31,7 +31,9 @@ The implementation of the Tier 4 pipeline was a multi-step debugging process. Un
 ## 3. Final Outcome & Next Steps
 
 *   The `Final-Training` branch now contains a fully functional, end-to-end, CPU-based Champion/Challenger pipeline, and a new profitable champion model.
-*   An automated scheduler has been implemented in `src/tier4/scheduler.py` which runs the entire pipeline weekly.
-*   The project is now functionally complete up to the end of the Tier 4 roadmap. The system can now autonomously retrain, evaluate, and deploy new models.
+*   The project has now moved to a more advanced **Evolutionary Training** methodology, orchestrated by the `src/tier4/evolutionary_training.py` script. This is the new primary entry point for the system.
+*   This new script uses a genetic algorithm to breed and mutate the hyperparameters of winning models from a `gene_pool.json`, creating a more intelligent learning process than simple randomized exploration.
+*   After each cycle, a clear, human-readable summary of the new model's performance is printed.
+*   The `run_in_colab.ipynb` notebook has been updated to use this new, more advanced training script.
 *   **DO NOT** attempt to re-enable the GPU.
-*   Future work should focus on improving the model's underlying strategy, either through new feature engineering or by exploring different model architectures.
+*   Future work should focus on expanding the gene pool with more diverse, successful models and potentially introducing new features for the AI to explore.
