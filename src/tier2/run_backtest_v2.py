@@ -44,7 +44,8 @@ def run_v2_backtest():
     predictions_proba = model.predict(X_test)
     predictions_mapped = np.argmax(predictions_proba, axis=1)
 
-    signal_map = {0: -1, 1: 0, 2: 1} # Sell, Hold, Buy
+    # Remap predictions back to original labels: 0 -> -1 (Sell), 1 -> 0 (Hold), 2 -> 1 (Buy)
+    signal_map = {0: -1, 1: 0, 2: 1}
     signals = pd.Series(predictions_mapped, index=X_test.index).map(signal_map)
 
     # 5. Initialize Strategy Overlay

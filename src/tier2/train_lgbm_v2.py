@@ -4,6 +4,8 @@ import pandas as pd
 import lightgbm as lgb
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
+from sklearn.utils.class_weight import compute_class_weight
+import numpy as np
 import os
 import sys
 
@@ -34,6 +36,10 @@ def train_lightgbm_on_v2_features():
     df['label'] = get_tri_barrier_labels(df['btc_close'])
     df = df.dropna(subset=['label']) # Drop rows where labels couldn't be generated
 
+    # Remap labels for LightGBM multiclass objective
+    label_map = {-1: 0, 0: 1, 1: 2}
+    df['label'] = df['label'].map(label_map)
+
     # Exclude non-feature columns
     features_to_exclude = [col for col in df.columns if '_close' in col or '_volume' in col or 'event_name' in col or 'label' in col]
     features = [c for c in df.columns if c not in features_to_exclude]
@@ -43,12 +49,20 @@ def train_lightgbm_on_v2_features():
     print(f"[{time.ctime()}] Feature set defined with {len(features)} features.")
 
     # 4. Split Data
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False, random_state=42)
-    print(f"[{time.ctime()}] Data split into training and testing sets.")
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=True, random_state=42, stratify=y)
+    print(f"[{time.ctime()}] Data split into training and testing sets using stratification.")
 
-    # 5. Train LightGBM Model
-    print(f"[{time.ctime()}] Training LightGBM model...")
-    lgb_train = lgb.Dataset(X_train, y_train)
+    # 5. Calculate Class Weights
+    print(f"[{time.ctime()}] Calculating class weights...")
+    classes = np.unique(y_train)
+    weights = compute_class_weight(class_weight='balanced', classes=classes, y=y_train)
+    class_weight_dict = dict(zip(classes, weights))
+    print(f"Class weights: {class_weight_dict}")
+
+    # 6. Train LightGBM Model
+    print(f"[{time.ctime()}] Training LightGBM model with class weights...")
+    sample_weight = y_train.map(class_weight_dict)
+    lgb_train = lgb.Dataset(X_train, y_train, weight=sample_weight)
 
     params = {
         'objective': 'multiclass',
@@ -59,13 +73,13 @@ def train_lightgbm_on_v2_features():
         'learning_rate': 0.05,
         'feature_fraction': 0.9,
         'verbose': -1,
-        'device': 'gpu'  # Enable GPU acceleration
+        'device': 'cpu'  # Use CPU
     }
 
     model = lgb.train(params, lgb_train, num_boost_round=100)
     print(f"[{time.ctime()}] Model training complete.")
 
-    # 6. Evaluate Model
+    # 7. Evaluate Model
     print(f"[{time.ctime()}] Evaluating model performance...")
     y_pred_proba = model.predict(X_test, num_iteration=model.best_iteration)
     y_pred = [list(row).index(max(row)) for row in y_pred_proba]
@@ -74,7 +88,7 @@ def train_lightgbm_on_v2_features():
     print(f"Accuracy on test set: {accuracy:.4f}")
     print("--------------------------\\n")
 
-    # 7. Save Model
+    # 8. Save Model
     print(f"[{time.ctime()}] Saving trained model to {MODEL_PATH}...")
     model.save_model(MODEL_PATH)
     print(f"[{time.ctime()}] Model saved successfully.")
