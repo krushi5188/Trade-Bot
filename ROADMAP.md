@@ -60,9 +60,10 @@
 **Architecture: Champion/Challenger System**
 The core of this tier will be a "Champion/Challenger" model. The currently live "Champion" model will be periodically challenged by a newly trained "Challenger." The challenger will only be promoted to the new champion if it demonstrates superior performance on the most recent data.
 
-**System Components:**
-1.  **Automated Data Pipeline Scheduler:** A cron job or other scheduling service (e.g., using `APScheduler` in Python) will run the data ingestion scripts from Tier 1 on a regular basis (e.g., daily) to ensure our dataset is always up-to-date.
-2.  **Retraining Trigger:** A trigger will initiate the training of a new "Challenger" model. This can be based on a fixed schedule (e.g., the first of every month) or be event-driven (e.g., a significant dip in the current champion's performance).
+**System Components (Complete):**
+1.  **Automated Retraining Scheduler (`src/tier4/scheduler.py`):** The pipeline now includes a scheduler that uses `APScheduler` to automatically run the entire Champion/Challenger process on a weekly basis. This automates both the data update and the retraining trigger.
+2.  **Automated Training & Backtesting Pipeline (`src/tier4/champion_challenger.py`):** A master script now orchestrates the entire end-to-end process, from feature engineering to training, backtesting, and model promotion.
+3.  **Champion/Challenger Evaluation & Promotion Logic (Implemented):** The system successfully trained a new "Challenger" model which **outperformed the V2 champion** with a Sharpe Ratio of **0.059**. The challenger was automatically promoted, and its metrics were saved as the new benchmark.
 3.  **Automated Training & Backtesting Pipeline:** A master script will orchestrate the entire end-to-end process:
     *   Execute the V2 feature engineering pipeline on the latest dataset.
     *   Train a new LightGBM "Challenger" model using the optimal hyperparameters defined in Tier 3.

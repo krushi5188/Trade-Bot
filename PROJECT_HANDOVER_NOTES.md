@@ -30,7 +30,8 @@ The implementation of the Tier 4 pipeline was a multi-step debugging process. Un
 
 ## 3. Final Outcome & Next Steps
 
-*   The `Final-Training` branch now contains a fully functional, end-to-end, CPU-based Champion/Challenger pipeline.
-*   A new challenger model was successfully trained and **outperformed the champion** with a Sharpe Ratio of **0.059**, leading to its automatic promotion. The system works as designed.
+*   The `Final-Training` branch now contains a fully functional, end-to-end, CPU-based Champion/Challenger pipeline, and a new profitable champion model.
+*   An automated scheduler has been implemented in `src/tier4/scheduler.py` which runs the entire pipeline weekly.
+*   The project is now functionally complete up to the end of the Tier 4 roadmap. The system can now autonomously retrain, evaluate, and deploy new models.
 *   **DO NOT** attempt to re-enable the GPU.
-*   The next logical step is to continue with the Tier 4 roadmap, focusing on the scheduling and automation aspects of the Champion/Challenger system.
+*   Future work should focus on improving the model's underlying strategy, either through new feature engineering or by exploring different model architectures.
