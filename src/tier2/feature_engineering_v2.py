@@ -8,7 +8,9 @@ from typing import Optional
 
 def save_checkpoint(df: pd.DataFrame, name: str) -> None:
     """Saves checkpoint of dataframe."""
-    checkpoint_path = f'/content/drive/MyDrive/trading-ai/data/processed/checkpoint_{name}.parquet'
+    PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+    PROCESSED_DIR = os.path.join(PROJECT_ROOT, 'data/processed')
+    checkpoint_path = os.path.join(PROCESSED_DIR, f'checkpoint_{name}.parquet')
     os.makedirs(os.path.dirname(checkpoint_path), exist_ok=True)
     df.to_parquet(checkpoint_path)
     print(f"[{time.ctime()}] Checkpoint saved: {checkpoint_path}")
@@ -187,16 +189,16 @@ if __name__ == '__main__':
 
         # Ensure correct data types
         df_pd['sentiment_score'] = pd.to_numeric(df_pd['sentiment_score'], errors='coerce').fillna(0).astype('float32')
-        df_pd['btc_hurst'] = pd.to_numeric(df_pd['btc_hurst'], errors='coerce').fillna(0.5).astype('float32')
+        df_pd['btc_close_hurst'] = pd.to_numeric(df_pd['btc_close_hurst'], errors='coerce').fillna(0.5).astype('float32')
 
         # Create features with safe division
-        df_pd['sentiment_x_hurst'] = df_pd['sentiment_score'] * df_pd['btc_hurst']
+        df_pd['sentiment_x_hurst'] = df_pd['sentiment_score'] * df_pd['btc_close_hurst']
 
         # Event features
         if 'event_name' not in df_pd.columns:
             df_pd['event_name'] = None
         df_pd['is_high_impact_event'] = (~df_pd['event_name'].isna()).astype('int8')
-        df_pd['event_x_hurst'] = df_pd['is_high_impact_event'] * df_pd['btc_hurst']
+        df_pd['event_x_hurst'] = df_pd['is_high_impact_event'] * df_pd['btc_close_hurst']
 
         # Volatility features with division guard
         df_pd['btc_volatility'] = df_pd['btc_close'].pct_change().rolling(24, min_periods=1).std()
