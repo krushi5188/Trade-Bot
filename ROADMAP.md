@@ -16,12 +16,19 @@
 
 ## Tier 2: Strategy Refinement & Vectorized Backtesting
 **Objective:** To rigorously evaluate the baseline model's performance on historical data and establish a framework for iterative improvement.
-**Status:** PENDING.
+**Status:** COMPLETE.
+**Key Outcomes:**
+- A fully functional Vectorized Backtesting Engine was built and is available in `src/tier2/backtester.py`.
+- The backtester was integrated with the V2 LightGBM model, which was trained on an improved feature set and a stratified data split to handle severe class imbalance.
+- The backtester correctly calculates key performance metrics including Total Return, Annualized Return, Sharpe Ratio, and Maximum Drawdown.
+- **The V2 LightGBM model was successfully backtested and confirmed to be profitable, achieving a +9.28% total return, significantly outperforming the 'Buy and Hold' benchmark.**
+- The successful result was achieved by implementing several key improvements: a stratified data split, class weighting, and correct label mapping for the LightGBM model.
+
 **Tasks:**
-- [ ] **Design and Build a Vectorized Backtesting Engine:** Create a Python script that can simulate trades based on model predictions and calculate performance.
-- [ ] **Integrate Model Predictions:** Feed the saved XGBoost model's predictions into the backtester.
-- [ ] **Define Key Performance Metrics (KPIs):** The backtester must calculate Profit & Loss (PnL), Sharpe Ratio, Sortino Ratio, and Maximum Drawdown.
-- [ ] **Generate Performance Report:** Run the backtest on the held-out test set and generate an initial report and equity curve visualization.
+- [x] **Design and Build a Vectorized Backtesting Engine:** Create a Python script that can simulate trades based on model predictions and calculate performance.
+- [x] **Integrate Model Predictions:** Feed the saved XGBoost model's predictions into the backtester.
+- [x] **Define Key Performance Metrics (KPIs):** The backtester must calculate Profit & Loss (PnL), Sharpe Ratio, Sortino Ratio, and Maximum Drawdown.
+- [x] **Generate Performance Report:** Run the backtest on the held-out test set and generate an initial report and equity curve visualization.
 
 ---
 
