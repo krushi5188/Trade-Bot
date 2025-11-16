@@ -6,16 +6,21 @@ from sklearn.metrics import classification_report
 import os
 import joblib
 
-def get_tri_barrier_labels(close, look_forward=24, upper_pct=0.02, lower_pct=0.01):
+def get_tri_barrier_labels(close, look_forward=24, upper_multiplier=2, lower_multiplier=1):
     """
-    Creates Tri-Barrier Labels for a given price series.
+    Creates dynamic Tri-Barrier Labels based on rolling volatility.
     - Label 1: Upper barrier (profit take) was hit.
     - Label -1: Lower barrier (stop loss) was hit.
     - Label 0: Neither barrier was hit within the look_forward period.
     """
+    # Calculate rolling volatility
+    volatility = close.pct_change().rolling(look_forward).std()
+
+    # Define dynamic barriers
+    upper_barrier = close + (close * volatility * upper_multiplier)
+    lower_barrier = close - (close * volatility * lower_multiplier)
+
     out = pd.Series(0, index=close.index)
-    upper_barrier = close * (1 + upper_pct)
-    lower_barrier = close * (1 - lower_pct)
 
     for i in range(len(close) - look_forward):
         # Get the path of future prices

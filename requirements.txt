@@ -7,6 +7,7 @@ pandas
 numpy
 scikit-learn
 statsmodels
+APScheduler
 xgboost
 lightgbm
 shap

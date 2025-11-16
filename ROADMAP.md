@@ -52,23 +52,19 @@
 
 ## Tier 4: Continuous Learning & Automated Deployment
 **Objective:** To create a fully autonomous system where the AI can retrain, evaluate, and deploy itself continuously, allowing it to adapt to changing market conditions without manual intervention.
-**Status:** PENDING.
+**Status:** IN PROGRESS.
+**Key Outcomes (In Progress):**
+- A complete, end-to-end Champion/Challenger pipeline has been built and is located in `src/tier4/champion_challenger.py`.
+- The pipeline was successfully debugged, resolving a critical data corruption issue caused by a limited data fetch in the original pipeline.
+- **Note on GPU Usage:** The pipeline is currently configured to run on the CPU. The target Google Colab environment has unresolved issues with its GPU driver and library configuration that prevent LightGBM from building with GPU support. The pipeline will run successfully on the CPU as a fallback.
 **Architecture: Champion/Challenger System**
 The core of this tier will be a "Champion/Challenger" model. The currently live "Champion" model will be periodically challenged by a newly trained "Challenger." The challenger will only be promoted to the new champion if it demonstrates superior performance on the most recent data.
 
-**System Components:**
-1.  **Automated Data Pipeline Scheduler:** A cron job or other scheduling service (e.g., using `APScheduler` in Python) will run the data ingestion scripts from Tier 1 on a regular basis (e.g., daily) to ensure our dataset is always up-to-date.
-2.  **Retraining Trigger:** A trigger will initiate the training of a new "Challenger" model. This can be based on a fixed schedule (e.g., the first of every month) or be event-driven (e.g., a significant dip in the current champion's performance).
-3.  **Automated Training & Backtesting Pipeline:** A master script will orchestrate the entire end-to-end process:
-    *   Execute the V2 feature engineering pipeline on the latest dataset.
-    *   Train a new LightGBM "Challenger" model using the optimal hyperparameters defined in Tier 3.
-    *   Run a full backtest on the "Challenger" model on a recent, held-out portion of the data.
-4.  **Champion/Challenger Evaluation & Promotion Logic:**
-    *   The system will programmatically compare the challenger's backtest report (focusing on Sharpe Ratio and Total Return) against the champion's last-known performance.
-    *   If the challenger's performance is statistically superior, the system will automatically promote it to the new "Champion."
-5.  **Automated Deployment:**
-    *   Upon promotion, the system will automatically replace the `lgbm_v2_model.txt` file with the new champion model file. This ensures the live trading system (or paper trading system) always uses the best-performing model.
-    *   The system will log the entire process, including the performance of both models and the reason for the promotion decision.
+**System Components (Complete):**
+1.  **Evolutionary Training Loop (`src/tier4/evolutionary_training.py`):** The core of the system is a continuous, evolutionary training loop. Instead of simple scheduling, this script actively guides the AI's learning. It uses a genetic algorithm to "breed" and "mutate" the hyperparameters of winning models, allowing the AI to intelligently explore and improve upon its own best ideas.
+2.  **Human-Readable Reporting:** After each evolutionary cycle, the system prints a clear, simple summary of the new model's performance and whether it was promoted, making it easy to track the AI's learning progress.
+3.  **Automated Training & Backtesting Pipeline (`src/tier4/champion_challenger.py`):** The underlying master script that orchestrates the end-to-end process of training, backtesting, and promotion. It is now controlled by the evolutionary training loop.
+4.  **Gene Pool (`gene_pool.json`):** A file that stores the "genes" (hyperparameters) of all past champion models, serving as the basis for future evolution.
 
 ---
 
