@@ -94,7 +94,7 @@ if __name__ == '__main__':
         'forex': {'from': 'EUR', 'to': 'USD'}
     }
     TIMEFRAME = '1h'
-    DAYS_OF_HISTORY_CRYPTO = 365 * 2 # 2 years for crypto
+    DAYS_OF_HISTORY_CRYPTO = 365 * 15 # 15 years for crypto
     DATA_DIRECTORY = 'data/raw/market'
 
     run_unified_pipeline(TARGET_ASSETS, TIMEFRAME, DAYS_OF_HISTORY_CRYPTO, 'Z1CPCJK1GXULHYXU', DATA_DIRECTORY)
