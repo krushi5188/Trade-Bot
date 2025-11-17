@@ -12,18 +12,20 @@ class VectorizedBacktester:
     A class to perform a vectorized backtest of a trading strategy.
     """
 
-    def __init__(self, price_data, signals, initial_capital=100000, strategy_overlay=None):
+    def __init__(self, price_data, signals, initial_capital=100000, transaction_cost=0.001, strategy_overlay=None):
         """
         Args:
             price_data (pd.Series): Series of prices for the asset.
             signals (pd.Series): Series of trading signals (-1, 0, 1).
             initial_capital (float): The starting capital for the backtest.
+            transaction_cost (float): The cost per trade (e.g., 0.001 for 0.1%).
             strategy_overlay (StrategyOverlay, optional): An object to apply
                                                        strategy overlays.
         """
         self.price_data = price_data
         self.signals = signals
         self.initial_capital = initial_capital
+        self.transaction_cost = transaction_cost
         self.strategy_overlay = strategy_overlay # Store the overlay object
         self.positions = self.generate_positions()
         self.portfolio = self.backtest_portfolio()
@@ -112,6 +114,10 @@ class VectorizedBacktester:
 
         # Calculate returns of the strategy
         portfolio['strategy_returns'] = portfolio['market_returns'] * portfolio['position']
+
+        # Incorporate transaction costs
+        trades = portfolio['position'].diff().fillna(0) != 0
+        portfolio['strategy_returns'] -= trades * self.transaction_cost
 
         # Calculate cumulative returns
         portfolio['cumulative_market_returns'] = (1 + portfolio['market_returns']).cumprod()
