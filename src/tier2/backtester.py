@@ -127,10 +127,17 @@ class VectorizedBacktester:
         Calculates and returns key performance metrics.
         """
         total_return = self.portfolio['cumulative_strategy_returns'].iloc[-1] - 1
-        annualized_return = (1 + total_return) ** (252 / len(self.portfolio)) - 1 # Assuming 252 trading days
+
+        # Correctly calculate the number of years in the backtest period
+        days_in_period = len(self.portfolio) / 24  # Since data is hourly
+        years_in_period = days_in_period / 365.25
+
+        # Annualize the return
+        annualized_return = (1 + total_return) ** (1 / years_in_period) - 1 if years_in_period > 0 else 0
+
 
         # Sharpe Ratio
-        sharpe_ratio = self.calculate_sharpe_ratio()
+        sharpe_ratio = self.calculate_sharpe_ratio(years_in_period=years_in_period)
 
         # Max Drawdown
         max_drawdown = self.calculate_max_drawdown()
@@ -143,12 +150,16 @@ class VectorizedBacktester:
         }
         return metrics
 
-    def calculate_sharpe_ratio(self, risk_free_rate=0.0):
+    def calculate_sharpe_ratio(self, risk_free_rate=0.0, years_in_period=1):
         """
         Calculates the Sharpe Ratio.
         """
-        excess_returns = self.portfolio['strategy_returns'] - risk_free_rate / 252
-        sharpe_ratio = np.sqrt(252) * (excess_returns.mean() / excess_returns.std())
+
+        # Calculate number of trading periods (hours in this case) in a year
+        trading_periods_per_year = len(self.portfolio) / years_in_period if years_in_period > 0 else 252 * 24
+
+        excess_returns = self.portfolio['strategy_returns'] - risk_free_rate / trading_periods_per_year
+        sharpe_ratio = np.sqrt(trading_periods_per_year) * (excess_returns.mean() / excess_returns.std())
         return sharpe_ratio
 
     def calculate_max_drawdown(self):
