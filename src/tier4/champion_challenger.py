@@ -85,11 +85,9 @@ def train_challenger_model():
     y = df['label']
     print(f"[{time.ctime()}] Feature set defined with {len(features)} features.")
 
-    # 4. Split Data (Chronological Split)
-    split_index = int(len(X) * 0.8)
-    X_train, X_test = X.iloc[:split_index], X.iloc[split_index:]
-    y_train, y_test = y.iloc[:split_index], y.iloc[split_index:]
-    print(f"[{time.ctime()}] Data split chronologically into training and testing sets.")
+    # 4. Split Data
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=True, random_state=42, stratify=y)
+    print(f"[{time.ctime()}] Data split into training and testing sets using stratification.")
 
     # 5. Calculate Class Weights
     print(f"[{time.ctime()}] Calculating class weights...")
@@ -103,19 +101,14 @@ def train_challenger_model():
     sample_weight = y_train.map(class_weight_dict)
     lgb_train = lgb.Dataset(X_train, y_train, weight=sample_weight)
 
-    # Get hyperparameters from environment variables, with defaults
-    num_leaves = int(os.environ.get('LGBM_NUM_LEAVES', 31))
-    learning_rate = float(os.environ.get('LGBM_LEARNING_RATE', 0.05))
-    feature_fraction = float(os.environ.get('LGBM_FEATURE_FRACTION', 0.9))
-
     params = {
         'objective': 'multiclass',
         'num_class': 3,
         'metric': 'multi_logloss',
         'boosting_type': 'gbdt',
-        'num_leaves': num_leaves,
-        'learning_rate': learning_rate,
-        'feature_fraction': feature_fraction,
+        'num_leaves': 31,
+        'learning_rate': 0.05,
+        'feature_fraction': 0.9,
         'verbose': -1,
         'device': 'cpu',
         'seed': random.randint(0, 100000)

@@ -127,7 +127,16 @@ class VectorizedBacktester:
         Calculates and returns key performance metrics.
         """
         total_return = self.portfolio['cumulative_strategy_returns'].iloc[-1] - 1
-        annualized_return = (1 + total_return) ** (252 / len(self.portfolio)) - 1 # Assuming 252 trading days
+
+        # Correctly calculate the number of years in the backtest period
+        days_in_backtest = (self.portfolio.index[-1] - self.portfolio.index[0]).days
+        years_in_backtest = days_in_backtest / 365.25  # Account for leap years
+
+        # Avoid division by zero if the backtest is less than a year
+        if years_in_backtest == 0:
+            years_in_backtest = 1
+
+        annualized_return = (1 + total_return) ** (1 / years_in_backtest) - 1
 
         # Sharpe Ratio
         sharpe_ratio = self.calculate_sharpe_ratio()

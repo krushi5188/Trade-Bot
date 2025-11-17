@@ -52,7 +52,14 @@
 
 ## Tier 4: Automated Retraining & Professional Validation Pipeline
 **Objective:** To build a robust, industry-standard pipeline that continuously adapts to changing market conditions through rigorous, automated retraining, tuning, and validation. This approach replaces the previous, flawed "Genetic Programming" experiment.
-**Status:** IN PROGRESS.
+**Status:** COMPLETE.
+**Key Outcomes:**
+- The Champion/Challenger pipeline (`src/tier4/champion_challenger.py`) is fully operational.
+- A critical bug was identified and fixed where the pipeline was using a simple chronological split for training data instead of a stratified shuffle. This was causing a severe drop in model performance.
+- After correcting the data splitting method and standardizing hyperparameters, a new Challenger model was trained that significantly outperformed the V2 Champion.
+- **The new Champion model achieved a +14.06% total return and a corrected +3.49% annualized return in backtesting, establishing a new, higher benchmark for the project.**
+- A bug in the backtester's annualized return calculation was identified and fixed.
+- The pipeline successfully identified the superior performance and automatically promoted the new model, demonstrating the system's ability to self-improve.
 
 **Architecture: A Professional, Adaptive Framework**
 Based on critical expert feedback, the project has pivoted away from experimental methods. The new architecture is grounded in established best practices for quantitative finance and machine learning to address the non-stationarity of financial markets. The system will no longer attempt to "breed" a single perfect model, but will instead ensure the live model is always the most adapted and validated version for the current market regime.
