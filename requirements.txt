@@ -7,6 +7,7 @@ pandas
 numpy
 scikit-learn
 statsmodels
+APScheduler
 xgboost
 lightgbm
 shap
@@ -21,3 +22,4 @@ sentencepiece
 ccxt
 pyarrow
 scipy<1.16  # Pinning scipy to avoid ImportError with statsmodels
+optuna

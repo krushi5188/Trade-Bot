@@ -27,6 +27,61 @@ class VectorizedBacktester:
         self.strategy_overlay = strategy_overlay # Store the overlay object
         self.positions = self.generate_positions()
         self.portfolio = self.backtest_portfolio()
+        self.trade_log = self._generate_trade_log()
+
+    def get_trade_log(self):
+        """
+        Returns the generated trade log.
+        """
+        return self.trade_log
+
+    def _generate_trade_log(self):
+        """
+        Generates a log of individual trades from the positions series.
+        """
+        positions = self.portfolio['position']
+        prices = self.portfolio['price']
+
+        # Find points where a trade occurs (position changes)
+        trade_points = positions.diff().fillna(0)
+        trade_points = trade_points[trade_points != 0]
+
+        trades = []
+        current_position = 0
+        entry_time = None
+        entry_price = 0
+
+        for time, pos_change in trade_points.items():
+            if current_position == 0: # New entry
+                entry_time = time
+                entry_price = prices.loc[time]
+                current_position += pos_change
+            else: # Exiting a position
+                exit_price = prices.loc[time]
+
+                # Simple PnL calculation
+                pnl = (exit_price - entry_price) * current_position
+
+                trades.append({
+                    'Entry Time': entry_time,
+                    'Exit Time': time,
+                    'Entry Price': entry_price,
+                    'Exit Price': exit_price,
+                    'PnL': pnl,
+                    'Position': current_position
+                })
+
+                if current_position + pos_change == 0:
+                    # Fully closed position
+                    current_position = 0
+                    entry_time = None
+                else:
+                    # Partial close or reversal, treat as new entry
+                    entry_time = time
+                    entry_price = prices.loc[time]
+                    current_position += pos_change
+
+        return pd.DataFrame(trades)
 
     def generate_positions(self):
         """
@@ -81,10 +136,10 @@ class VectorizedBacktester:
         max_drawdown = self.calculate_max_drawdown()
 
         metrics = {
-            'Total Return': f"{total_return:.2%}",
-            'Annualized Return': f"{annualized_return:.2%}",
-            'Sharpe Ratio': f"{sharpe_ratio:.2f}",
-            'Max Drawdown': f"{max_drawdown:.2%}"
+            'Total Return (%)': total_return * 100,
+            'Annualized Return (%)': annualized_return * 100,
+            'Sharpe Ratio': sharpe_ratio if np.isfinite(sharpe_ratio) else 0.0,
+            'Max Drawdown (%)': max_drawdown * 100
         }
         return metrics
 

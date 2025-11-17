@@ -1,36 +1,35 @@
 # Project Handover Notes
 
 **From:** Jules
-**Date:** 2025-11-15
+**Date:** 2025-11-16
 
-## 1. High-Level Goal & Current Status
+## 1. CRITICAL: Strategic Pivot to a Professional Pipeline
 
-The primary goal is to develop a profitable, autonomous AI trading model.
+**This document supersedes all previous handover notes.**
 
-**Current Status:** We have completed an exhaustive exploration of hyperparameter tuning in Tier 3.
-*   **Tier 1:** Completed. Foundational data pipelines and a baseline XGBoost model.
-*   **Tier 2:** Completed. Developed the "champion" LightGBM V2 model, which is profitable (+9.28% return).
-*   **Tier 3:** Completed. An extensive and robust hyperparameter tuning process was conducted. **The key finding is that the V2 model's performance could not be improved through tuning.** The V3.1 model, tuned with a rigorous cross-validation methodology, significantly underperformed the V2 champion.
+Based on critical expert feedback, the project has undergone a major strategic pivot. The previous experimental approach, termed "Genetic Programming" (which involved attempting to "breed" models by swapping their internal decision trees), has been **completely abandoned**.
 
-**Immediate Next Step:** The project must now move to **Tier 4: Continuous Learning & Automated Deployment.** The full plan is in `ROADMAP.md`.
+**Reasoning for Abandonment:** The approach was fundamentally flawed.
+1.  **Conceptual Flaw:** In gradient boosting models like LightGBM, decision trees are interdependent. Each tree is built to correct the errors of the previous ones. Swapping them between models is mathematically invalid and destroys the model's integrity.
+2.  **Technical Flaw:** The LightGBM library does not support loading a model from the modified JSON structure we were creating. This represents a hard technical block.
+3.  **Financial Flaw:** The approach was naive and did not account for the non-stationary nature of financial markets, regime changes, or proper risk management.
 
-## 2. Key Project Components & Scripts
+**All code related to `gene_extractor.py` and `genetic_breeder.py` should now be considered deprecated and is for historical reference only.**
 
-*   **Master Plan:** `ROADMAP.md` is the primary source of truth.
-*   **Champion Model:** The LightGBM V2 model is the definitive best model. Its backtest is at `analysis/backtest_reports/lgbm_v2_equity_curve.png`.
-*   **Backtesting Engine:** Located at `src/tier2/backtester.py`.
-*   **Tier 3 Scripts (Archive):** The scripts in `src/tier3/` document our robust but unsuccessful tuning efforts. They should be used for reference only.
+## 2. The New Strategy: Automated Retraining & Validation
 
-## 3. CRITICAL INSTRUCTION FOR NEXT ASSISTANT
+The project is now focused on building a robust, industry-standard **Automated Retraining and Validation Pipeline**. The goal is not to create a single perfect model, but to create a system that constantly adapts to changing market conditions.
 
-**DO NOT ATTEMPT FURTHER HYPERPARAMETER TUNING.**
+The official plan is now documented in **`ROADMAP.md` under "Tier 4: Automated Retraining & Professional Validation Pipeline"**.
 
-We have conclusively proven through two rigorous methodologies (a simple split and a full time-series cross-validation) that the current feature set has reached its maximum potential with the V2 model's parameters.
+The key components to be built are:
+*   **Structured Hyperparameter Tuning:** Using Optuna with `TimeSeriesSplit` cross-validation.
+*   **Walk-Forward Validation Engine:** The gold standard for financial backtesting.
+*   **Dynamic Feature Selection:** To adapt to changing market regimes by identifying the most currently predictive features.
+*   **Integrated Risk Management:** To evaluate performance within a realistic risk framework.
 
-Any further attempts to tune this model will waste time and computational resources.
+## 3. Immediate Next Steps
 
-The next performance breakthrough **must** come from one of two areas:
-1.  **New Feature Engineering:** Introducing new data sources or creating more sophisticated features.
-2.  **Tier 4 Architecture:** Implementing the "Champion/Challenger" system, which allows the model to adapt over time.
+The `ROADMAP.md` has been updated to reflect this new direction.
 
-Proceed directly to the Tier 4 plan outlined in `ROADMAP.md`.
+The immediate next task is to begin implementing the first component of this new pipeline: building the **structured hyperparameter tuning script** using Optuna and TimeSeriesSplit.

@@ -50,25 +50,18 @@
 
 ---
 
-## Tier 4: Continuous Learning & Automated Deployment
-**Objective:** To create a fully autonomous system where the AI can retrain, evaluate, and deploy itself continuously, allowing it to adapt to changing market conditions without manual intervention.
-**Status:** PENDING.
-**Architecture: Champion/Challenger System**
-The core of this tier will be a "Champion/Challenger" model. The currently live "Champion" model will be periodically challenged by a newly trained "Challenger." The challenger will only be promoted to the new champion if it demonstrates superior performance on the most recent data.
+## Tier 4: Automated Retraining & Professional Validation Pipeline
+**Objective:** To build a robust, industry-standard pipeline that continuously adapts to changing market conditions through rigorous, automated retraining, tuning, and validation. This approach replaces the previous, flawed "Genetic Programming" experiment.
+**Status:** IN PROGRESS.
 
-**System Components:**
-1.  **Automated Data Pipeline Scheduler:** A cron job or other scheduling service (e.g., using `APScheduler` in Python) will run the data ingestion scripts from Tier 1 on a regular basis (e.g., daily) to ensure our dataset is always up-to-date.
-2.  **Retraining Trigger:** A trigger will initiate the training of a new "Challenger" model. This can be based on a fixed schedule (e.g., the first of every month) or be event-driven (e.g., a significant dip in the current champion's performance).
-3.  **Automated Training & Backtesting Pipeline:** A master script will orchestrate the entire end-to-end process:
-    *   Execute the V2 feature engineering pipeline on the latest dataset.
-    *   Train a new LightGBM "Challenger" model using the optimal hyperparameters defined in Tier 3.
-    *   Run a full backtest on the "Challenger" model on a recent, held-out portion of the data.
-4.  **Champion/Challenger Evaluation & Promotion Logic:**
-    *   The system will programmatically compare the challenger's backtest report (focusing on Sharpe Ratio and Total Return) against the champion's last-known performance.
-    *   If the challenger's performance is statistically superior, the system will automatically promote it to the new "Champion."
-5.  **Automated Deployment:**
-    *   Upon promotion, the system will automatically replace the `lgbm_v2_model.txt` file with the new champion model file. This ensures the live trading system (or paper trading system) always uses the best-performing model.
-    *   The system will log the entire process, including the performance of both models and the reason for the promotion decision.
+**Architecture: A Professional, Adaptive Framework**
+Based on critical expert feedback, the project has pivoted away from experimental methods. The new architecture is grounded in established best practices for quantitative finance and machine learning to address the non-stationarity of financial markets. The system will no longer attempt to "breed" a single perfect model, but will instead ensure the live model is always the most adapted and validated version for the current market regime.
+
+**System Components (To Be Built):**
+1.  **Structured Hyperparameter Tuning (Optuna):** The core of the retraining process will be a rigorous tuning script using the Optuna framework. Critically, it will employ **TimeSeriesSplit cross-validation** to find the optimal hyperparameters in a way that respects the chronological nature of financial data and prevents lookahead bias.
+2.  **Walk-Forward Validation Engine:** The system will be built around a robust walk-forward backtesting engine. This is the gold standard for financial model validation. It works by training the model on a rolling window of past data (e.g., 2 years) and then validating its performance on a subsequent, unseen period (e.g., 3 months). The window then slides forward, and the process repeats, providing a much more realistic estimate of future performance.
+3.  **Dynamic Feature Selection:** To adapt to changing market regimes, the pipeline will incorporate **feature permutation importance** analysis after each training cycle. This will allow the system to identify and focus on the most predictive features for the current market, discarding signals that have gone stale.
+4.  **Integrated Risk Management:** The backtester will be enhanced to include essential risk management rules, such as a per-trade stop-loss or a maximum daily drawdown limit, ensuring that performance is evaluated within a realistic risk framework.
 
 ---
 
