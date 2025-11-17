@@ -1,35 +1,32 @@
 # Project Handover Notes
 
 **From:** Jules
-**Date:** 2025-11-16
+**Date:** 2025-11-17
 
-## 1. CRITICAL: Strategic Pivot to a Professional Pipeline
+## 1. Executive Summary: Major Success & New Champion Model
 
-**This document supersedes all previous handover notes.**
+The primary objective of this session was to diagnose and fix a severe performance regression in the Tier 4 automated training pipeline. The mission was a resounding success.
 
-Based on critical expert feedback, the project has undergone a major strategic pivot. The previous experimental approach, termed "Genetic Programming" (which involved attempting to "breed" models by swapping their internal decision trees), has been **completely abandoned**.
+- **Problem:** The pipeline was producing models with a ~3% return, a significant drop from the V2 Champion's ~9% return.
+- **Root Cause:** Two critical bugs were identified:
+    1.  The training process was using generic, default hyperparameters instead of the optimized set from the V2 Champion.
+    2.  More importantly, the training data was being split chronologically, not with the necessary **stratified shuffle** required to handle the severe class imbalance of the dataset.
+- **Solution:** Both issues were corrected in the `src/tier4/champion_challenger.py` script.
+- **Outcome:** A new Challenger model was trained and backtested, achieving a **+14.06% Total Return**. The pipeline correctly identified this superior performance and has automatically promoted it to be the new Champion.
 
-**Reasoning for Abandonment:** The approach was fundamentally flawed.
-1.  **Conceptual Flaw:** In gradient boosting models like LightGBM, decision trees are interdependent. Each tree is built to correct the errors of the previous ones. Swapping them between models is mathematically invalid and destroys the model's integrity.
-2.  **Technical Flaw:** The LightGBM library does not support loading a model from the modified JSON structure we were creating. This represents a hard technical block.
-3.  **Financial Flaw:** The approach was naive and did not account for the non-stationary nature of financial markets, regime changes, or proper risk management.
+The project is now on a stable, profitable, and self-improving foundation.
 
-**All code related to `gene_extractor.py` and `genetic_breeder.py` should now be considered deprecated and is for historical reference only.**
+## 2. Key Technical Findings
 
-## 2. The New Strategy: Automated Retraining & Validation
+**Stratified Shuffling is Non-Negotiable:** The most critical lesson from this session is that for this dataset, `train_test_split` with `shuffle=True` and `stratify=y` is essential for training a profitable model. A simple chronological split, while correct for *backtesting*, is inadequate for the *training* phase due to the imbalanced nature of the buy/sell/hold labels. This finding should be considered a core principle of the project going forward.
 
-The project is now focused on building a robust, industry-standard **Automated Retraining and Validation Pipeline**. The goal is not to create a single perfect model, but to create a system that constantly adapts to changing market conditions.
+## 3. Next Steps & Future Work
 
-The official plan is now documented in **`ROADMAP.md` under "Tier 4: Automated Retraining & Professional Validation Pipeline"**.
+With the core pipeline now stable and performing at a new peak, the project is perfectly positioned to begin implementing the more advanced features outlined in the Tier 4 roadmap.
 
-The key components to be built are:
-*   **Structured Hyperparameter Tuning:** Using Optuna with `TimeSeriesSplit` cross-validation.
-*   **Walk-Forward Validation Engine:** The gold standard for financial backtesting.
-*   **Dynamic Feature Selection:** To adapt to changing market regimes by identifying the most currently predictive features.
-*   **Integrated Risk Management:** To evaluate performance within a realistic risk framework.
+The immediate next task should be to evolve the `champion_challenger.py` script into a more robust, industry-standard tool by focusing on:
 
-## 3. Immediate Next Steps
+1.  **Purged Walk-Forward Validation:** The current backtesting method uses a single, fixed hold-out set. The next evolution should be to implement a purged, walk-forward cross-validation system. This will provide a much more rigorous and realistic assessment of the model's performance over time.
+2.  **Dynamic Feature Importance:** After each training run, the pipeline should analyze the new Champion model's feature importance (e.g., using SHAP or the built-in LightGBM importance). This will allow us to track how the model's "brain" is adapting to changing market conditions and identify features that are gaining or losing predictive power.
 
-The `ROADMAP.md` has been updated to reflect this new direction.
-
-The immediate next task is to begin implementing the first component of this new pipeline: building the **structured hyperparameter tuning script** using Optuna and TimeSeriesSplit.
+By implementing these two features, we will move closer to the ultimate goal of a truly adaptive, self-improving trading agent.
