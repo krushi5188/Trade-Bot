@@ -6,6 +6,7 @@ import pandas as pd
 import lightgbm as lgb
 import numpy as np
 import time
+import json
 
 # Add the project root to the Python path to enable imports from 'src'
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
@@ -179,6 +180,12 @@ def backtest_meta_strategy(predictions_df):
     # 4. Save Equity Curve
     plot_path = os.path.join(OUTPUT_DIR, "tier5_meta_labeled_equity_curve.png")
     backtester.plot_equity_curve(plot_path)
+
+    # 5. Save Performance Metrics
+    metrics_path = os.path.join(OUTPUT_DIR, "tier5_meta_labeled_performance.json")
+    with open(metrics_path, 'w') as f:
+        json.dump(metrics, f, indent=4)
+    print(f"Performance metrics saved to: {metrics_path}")
 
     print(f"[{time.ctime()}] --- Backtesting Complete ---")
     return metrics

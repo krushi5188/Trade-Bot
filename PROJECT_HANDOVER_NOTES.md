@@ -3,30 +3,28 @@
 **From:** Jules
 **Date:** 2025-11-17
 
-## 1. Executive Summary: Major Success & New Champion Model
+## 1. Executive Summary: Tier 5 Analysis & A New Mandate
 
-The primary objective of this session was to diagnose and fix a severe performance regression in the Tier 4 automated training pipeline. The mission was a resounding success.
+The Tier 5 meta-labeling experiment was completed. While it successfully demonstrated a significant improvement in risk management (Sharpe Ratio up 5x, Max Drawdown halved), the resulting **Annualized Return of 2.04% is unacceptably low.**
 
-- **Problem:** The pipeline was producing models with a ~3% return, a significant drop from the V2 Champion's ~9% return.
-- **Root Cause:** Two critical bugs were identified:
-    1.  The training process was using generic, default hyperparameters instead of the optimized set from the V2 Champion.
-    2.  More importantly, the training data was being split chronologically, not with the necessary **stratified shuffle** required to handle the severe class imbalance of the dataset.
-- **Solution:** Both issues were corrected in the `src/tier4/champion_challenger.py` script.
-- **Outcome:** A new Challenger model was trained and backtested, achieving a **+14.06% Total Return**. The pipeline correctly identified this superior performance and has automatically promoted it to be the new Champion.
+A new, clear mandate has been established: **achieve a minimum of 30-40% annualized return.**
 
-The project is now on a stable, profitable, and self-improving foundation.
+This requires a fundamental shift in strategy. The current model architecture has reached its performance limit. The path forward is not incremental improvement but a new architectural approach.
 
 ## 2. Key Technical Findings
 
-**Stratified Shuffling is Non-Negotiable:** The most critical lesson from this session is that for this dataset, `train_test_split` with `shuffle=True` and `stratify=y` is essential for training a profitable model. A simple chronological split, while correct for *backtesting*, is inadequate for the *training* phase due to the imbalanced nature of the buy/sell/hold labels. This finding should be considered a core principle of the project going forward.
+**Risk-Management is Not a Substitute for Profit:** The Tier 5 model proved that we can effectively filter trades for higher precision. However, this came at the cost of overall return. The key takeaway is that the primary model's signal generation needs to be far more profitable *before* filtering is applied.
 
-## 3. Next Steps & Future Work
+**The "One-Size-Fits-All" Model is the Bottleneck:** The root cause of the low returns is likely that a single model cannot effectively learn the distinct patterns of different market types (e.g., trending bull markets vs. volatile, sideways markets).
 
-With the core pipeline now stable and performing at a new peak, the project is perfectly positioned to begin implementing the more advanced features outlined in the Tier 4 roadmap.
+## 3. Next Steps & Future Work: Tier 6 - Market Regime Detection
 
-The immediate next task should be to evolve the `champion_challenger.py` script into a more robust, industry-standard tool by focusing on:
+To meet the 30-40% annualized return target, the immediate and sole priority is to implement the **Tier 6 Market Regime Detection** strategy.
 
-1.  **Purged Walk-Forward Validation:** The current backtesting method uses a single, fixed hold-out set. The next evolution should be to implement a purged, walk-forward cross-validation system. This will provide a much more rigorous and realistic assessment of the model's performance over time.
-2.  **Dynamic Feature Importance:** After each training run, the pipeline should analyze the new Champion model's feature importance (e.g., using SHAP or the built-in LightGBM importance). This will allow us to track how the model's "brain" is adapting to changing market conditions and identify features that are gaining or losing predictive power.
+The plan is as follows:
 
-By implementing these two features, we will move closer to the ultimate goal of a truly adaptive, self-improving trading agent.
+1.  **Implement a Regime Detection Model:** Use an unsupervised model, likely a Hidden Markov Model (HMM), to analyze historical data and classify it into distinct market regimes.
+2.  **Develop Regime-Specific Models:** Modify the training pipeline to train a specialized champion model for each identified regime. This allows each model to focus on learning the specific patterns for one market type.
+3.  **Build a Regime-Switching Backtester:** Create a backtesting framework that first determines the current regime and then dynamically applies the correct specialized model to generate trade signals.
+
+This approach directly targets the goal of higher returns by allowing the AI to adapt its strategy to the current market environment, which is the most logical path to achieving a significant performance breakthrough.
