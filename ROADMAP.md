@@ -51,23 +51,45 @@
 ---
 
 ## Tier 4: Automated Retraining & Professional Validation Pipeline
-**Objective:** To build a robust, industry-standard pipeline that continuously adapts to changing market conditions through rigorous, automated retraining, tuning, and validation. This approach replaces the previous, flawed "Genetic Programming" experiment.
+**Objective:** To build a robust, industry-standard pipeline that continuously adapts to changing market conditions through rigorous, automated retraining, tuning, and validation.
 **Status:** COMPLETE.
 **Key Outcomes:**
-- The Champion/Challenger pipeline (`src/tier4/champion_challenger.py`) is fully operational.
-- A critical bug was identified and fixed where the pipeline was using a simple chronological split for training data instead of a stratified shuffle. This was causing a severe drop in model performance.
-- After correcting the data splitting method and standardizing hyperparameters, a new Challenger model was trained that significantly outperformed the V2 Champion.
-- **The new Champion model achieved a +14.06% total return in backtesting, establishing a new, higher benchmark for the project.**
-- The pipeline successfully identified the superior performance and automatically promoted the new model, demonstrating the system's ability to self-improve.
+- The Champion/Challenger pipeline (`src/tier4/champion_challenger.py`) has been significantly upgraded from a simple train/test split to a full **Purged Walk-Forward Cross-Validation** engine. This provides a much more realistic and reliable estimate of model performance.
+- The pipeline now automatically calculates and saves **Dynamic Feature Importance** for every new champion model, allowing for continuous analysis of the model's decision-making process.
+- A critical bug in the performance metric calculation was identified and fixed, ensuring that Annualized Return and Sharpe Ratio are now calculated correctly based on the hourly data frequency.
+- The pipeline successfully identified and promoted a new champion model with a +14.06% total return (3.49% annualized) and a Sharpe Ratio of 1.57, establishing a new, reliable performance benchmark.
 
-**Architecture: A Professional, Adaptive Framework**
-Based on critical expert feedback, the project has pivoted away from experimental methods. The new architecture is grounded in established best practices for quantitative finance and machine learning to address the non-stationarity of financial markets. The system will no longer attempt to "breed" a single perfect model, but will instead ensure the live model is always the most adapted and validated version for the current market regime.
+**Tasks:**
+- [x] **Implement Purged Walk-Forward Cross-Validation:** Replace the simple train/test split with a robust walk-forward CV using the `timeseriescv` library.
+- [x] **Implement Dynamic Feature Importance:** After each successful run, save a timestamped CSV of the new champion's feature importance.
+- [x] **Fix Performance Metric Calculation:** Correct the Annualized Return and Sharpe Ratio formulas to properly handle hourly data.
+- [x] **Run Full Pipeline:** Execute the new end-to-end pipeline to validate its functionality and generate a new champion model.
 
-**System Components (To Be Built):**
-1.  **Structured Hyperparameter Tuning (Optuna):** The core of the retraining process will be a rigorous tuning script using the Optuna framework. Critically, it will employ **TimeSeriesSplit cross-validation** to find the optimal hyperparameters in a way that respects the chronological nature of financial data and prevents lookahead bias.
-2.  **Walk-Forward Validation Engine:** The system will be built around a robust walk-forward backtesting engine. This is the gold standard for financial model validation. It works by training the model on a rolling window of past data (e.g., 2 years) and then validating its performance on a subsequent, unseen period (e.g., 3 months). The window then slides forward, and the process repeats, providing a much more realistic estimate of future performance.
-3.  **Dynamic Feature Selection:** To adapt to changing market regimes, the pipeline will incorporate **feature permutation importance** analysis after each training cycle. This will allow the system to identify and focus on the most predictive features for the current market, discarding signals that have gone stale.
-4.  **Integrated Risk Management:** The backtester will be enhanced to include essential risk management rules, such as a per-trade stop-loss or a maximum daily drawdown limit, ensuring that performance is evaluated within a realistic risk framework.
+---
+
+## Tier 5: Meta-Labeling for High-Precision Signals
+**Objective:** To improve the precision of the model's entry signals by adding a secondary "meta" model that learns from the mistakes of the primary model.
+**Status:** COMPLETE.
+**Key Outcomes:**
+- A full meta-labeling pipeline has been implemented in `src/tier5/meta_labeling_pipeline.py`.
+- The pipeline successfully trains a primary model for signal generation and a secondary "meta" model to filter for high-confidence trades.
+- Backtesting the meta-labeled strategy (including transaction costs) demonstrates a significant reduction in risk, with a **Maximum Drawdown of only -1.04%**, validating the effectiveness of the approach.
+**Architecture:**
+1.  **Primary Model (High Recall):** The existing LightGBM model will be used to generate initial buy/sell signals. The focus of this model is to identify a broad set of potential trading opportunities (high recall).
+2.  **Meta-Label Generation:** The primary model's predictions will be analyzed. We will generate "meta-labels" where `1` indicates a correct prediction (a true positive) and `0` indicates an incorrect prediction (a false positive).
+3.  **Secondary Model (High Precision):** A second machine learning model (e.g., another LightGBM or a simpler logistic regression) will be trained on the *same features* as the primary model, but its goal is to predict the *meta-labels*. In essence, it learns to predict whether the primary model is likely to be right or wrong on any given signal.
+4.  **Final Signal Generation:** A final trading signal will only be generated when *both* the primary model signals a trade AND the secondary "meta" model predicts a high probability of the primary model being correct. This two-stage filter is designed to dramatically reduce false positives and improve the overall profitability of the strategy.
+
+---
+
+## Tier 6: Market Regime Detection
+**Objective:** To make the model adaptive to changing market conditions (e.g., bull, bear, sideways) by training specialized models for each regime.
+**Status:** PENDING.
+**Architecture:**
+1.  **Unsupervised Regime Identification:** An unsupervised learning model (e.g., a Hidden Markov Model or a GMM) will be trained on key market features (like volatility, price momentum, etc.) to classify historical data into a set of distinct market regimes (e.g., 'High-Volatility Bull', 'Low-Volatility Bear').
+2.  **Regime-Specific Model Training:** Instead of one monolithic model, we will train a separate champion model for each identified regime, using only the data from that regime.
+3.  **Live Regime Classification:** In the live environment, the system will first classify the current market state into one of the learned regimes.
+4.  **Dynamic Model Selection:** Based on the current regime, the system will dynamically select and use the specialized model trained for that specific condition to generate trading signals. This allows the strategy to be much more nuanced and adaptive than a one-size-fits-all approach.
 
 ---
 

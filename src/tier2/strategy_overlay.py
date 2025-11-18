@@ -27,31 +27,28 @@ class StrategyOverlay:
         Calculates the rolling annualized volatility of the asset.
         """
         returns = self.price_data.pct_change()
-        # Calculate rolling standard deviation and annualize it
-        rolling_volatility = returns.rolling(window=self.volatility_lookback).std() * np.sqrt(252)
-        return rolling_volatility.fillna(0)
+        # Calculate rolling standard deviation and annualize it for hourly data
+        rolling_volatility = returns.rolling(window=self.volatility_lookback).std() * np.sqrt(252 * 24)
+        return rolling_volatility
 
     def get_volatility_adjusted_positions(self, signals):
         """
         Adjusts position sizes based on market volatility.
         Takes smaller positions in high-volatility periods and vice-versa.
-
-        Args:
-            signals (pd.Series): The raw trading signals (-1, 0, 1).
-
-        Returns:
-            pd.Series: A series of volatility-adjusted positions.
         """
         # Inverse volatility scaling: position size is inversely proportional to volatility
-        # We cap the position size to avoid extreme leverage
-        position_sizing = self.volatility_target / self.volatility
-        position_sizing[self.volatility == 0] = 0 # Avoid division by zero
+        with np.errstate(divide='ignore', invalid='ignore'):
+            position_sizing = self.volatility_target / self.volatility
+
+        # Where volatility was 0, division results in inf. This represents max position size.
+        # Any other NaNs (e.g., at the start) should be forward-filled then filled with 0.
+        position_sizing = position_sizing.reindex(signals.index, method='ffill').fillna(0)
 
         # Cap leverage to a maximum of 2x the base signal
         position_sizing = position_sizing.clip(0, 2)
 
         # Apply sizing to the original signals
-        adjusted_positions = signals * position_sizing
+        adjusted_positions = signals.astype(float) * position_sizing
 
         return adjusted_positions.fillna(0)
 
