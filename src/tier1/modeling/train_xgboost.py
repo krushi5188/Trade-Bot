@@ -1,3 +1,4 @@
+
 import pandas as pd
 import numpy as np
 import xgboost as xgb
@@ -6,32 +7,36 @@ from sklearn.metrics import classification_report
 import os
 import joblib
 
-def get_tri_barrier_labels(close, look_forward=24, upper_multiplier=2, lower_multiplier=1):
+def get_tri_barrier_labels(close, look_forward=24, upper_multiplier=2, lower_multiplier=1, min_return=0.0):
     """
-    Creates dynamic Tri-Barrier Labels based on rolling volatility.
+    Creates dynamic Tri-Barrier Labels based on rolling volatility with a minimum return threshold.
+    This new version is vectorized for performance.
+
     - Label 1: Upper barrier (profit take) was hit.
     - Label -1: Lower barrier (stop loss) was hit.
-    - Label 0: Neither barrier was hit within the look_forward period.
+    - Label 0: Neither barrier was hit OR the price change was below min_return.
     """
-    # Calculate rolling volatility
-    volatility = close.pct_change().rolling(look_forward).std()
+    # 1. Calculate rolling volatility and daily price change
+    volatility = close.pct_change().rolling(window=look_forward).std()
+    returns = close.pct_change()
 
-    # Define dynamic barriers
-    upper_barrier = close + (close * volatility * upper_multiplier)
-    lower_barrier = close - (close * volatility * lower_multiplier)
+    # 2. Define dynamic barriers
+    upper_barrier = returns + (volatility * upper_multiplier)
+    lower_barrier = returns - (volatility * lower_multiplier)
 
-    out = pd.Series(0, index=close.index)
+    # 3. Calculate future returns over the look_forward period
+    future_returns = close.pct_change(periods=look_forward).shift(-look_forward)
 
-    for i in range(len(close) - look_forward):
-        # Get the path of future prices
-        future_path = close.iloc[i+1 : i+1+look_forward]
+    # 4. Determine outcomes
+    out = pd.Series(0, index=close.index) # Default to Hold
 
-        # Check if upper barrier is hit
-        if any(future_path >= upper_barrier.iloc[i]):
-            out.iloc[i] = 1
-        # Check if lower barrier is hit
-        elif any(future_path <= lower_barrier.iloc[i]):
-            out.iloc[i] = -1
+    # Condition for hitting upper barrier
+    upper_mask = (future_returns > upper_barrier) & (future_returns > min_return)
+    out[upper_mask] = 1
+
+    # Condition for hitting lower barrier
+    lower_mask = (future_returns < lower_barrier) & (future_returns < -min_return)
+    out[lower_mask] = -1
 
     return out
 
@@ -45,29 +50,24 @@ def train_baseline_model(feature_path, model_dir):
     df = pd.read_parquet(feature_path)
 
     # 2. Create Labels
-    # We will train the model to predict the outcome for BTC
     print("Creating Tri-Barrier Labels for BTC/USD...")
     labels = get_tri_barrier_labels(df['btc_close'])
     df['label'] = labels
 
-    # We can't use the last `look_forward` rows as they have no future
     df = df.iloc[:-24]
 
     # 3. Define Features (X) and Labels (y)
-    # Exclude raw target data to prevent leakage, but keep engineered features.
     features_to_exclude = ['btc_close', 'btc_volume', 'label']
     features = [c for c in df.columns if c not in features_to_exclude]
     X = df[features]
     y = df['label']
 
-    # Convert labels to be XGBoost-friendly (0, 1, 2)
     y_mapped = y.map({-1: 0, 0: 1, 1: 2})
 
     print(f"\\nFeature set includes {len(X.columns)} features.")
     print(f"Label distribution:\\n{y_mapped.value_counts(normalize=True)}")
 
     # 4. Chronological Train-Test Split
-    # We will train on the first 80% of the data and test on the last 20%
     split_index = int(len(df) * 0.8)
     X_train, X_test = X.iloc[:split_index], X.iloc[split_index:]
     y_train, y_test = y_mapped.iloc[:split_index], y_mapped.iloc[split_index:]
