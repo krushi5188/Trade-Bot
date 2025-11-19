@@ -1,32 +1,24 @@
 # Project Handover Notes
 
 **From:** Jules
-**Date:** 2025-11-17
+**Date:** 2025-11-18
 
-## 1. Executive Summary: Major Success & New Champion Model
+## 1. Executive Summary: Major Progress & Critical Data Roadblock
 
-The primary objective of this session was to diagnose and fix a severe performance regression in the Tier 4 automated training pipeline. The mission was a resounding success.
+This session involved a significant push into advanced feature engineering, leading to a critical discovery that now defines our immediate next step.
 
-- **Problem:** The pipeline was producing models with a ~3% return, a significant drop from the V2 Champion's ~9% return.
-- **Root Cause:** Two critical bugs were identified:
-    1.  The training process was using generic, default hyperparameters instead of the optimized set from the V2 Champion.
-    2.  More importantly, the training data was being split chronologically, not with the necessary **stratified shuffle** required to handle the severe class imbalance of the dataset.
-- **Solution:** Both issues were corrected in the `src/tier4/champion_challenger.py` script.
-- **Outcome:** A new Challenger model was trained and backtested, achieving a **+14.06% Total Return**. The pipeline correctly identified this superior performance and has automatically promoted it to be the new Champion.
+- **Tier 7 Initiated (Hypothesis-Driven Feature Engineering):** We began the Tier 7 work, building a reusable script (`src/tier7/hypothesis_tester.py`) to scientifically test specific market hypotheses.
+- **Hypothesis 1 (London Lunch Pullback) Disproven on Hourly Data:** The first test of the "London Lunch Pullback" on our existing hourly BTC and Gold data was a success for our *process*. The results were statistically insignificant (0.27% for BTC, 0.17% for Gold), proving that this phenomenon is not a source of alpha at this timeframe.
+- **Critical Finding (Data Limitation):** It was determined that testing short-term hypotheses is not possible with the project's current hourly data. All attempts to source free, high-quality 1-minute or 5-minute historical data have failed due to API limitations or environment incompatibility (`MetaTrader5`).
+- **Resolution:** The user has confirmed they have access to high-frequency tick data from their own MT5 terminal and will provide it on a separate branch.
 
-The project is now on a stable, profitable, and self-improving foundation.
+**The project is now at a critical handoff point. The next worker will operate on a new branch (`mt5-tick-data`) which contains the necessary high-frequency data to properly test short-term hypotheses.**
 
-## 2. Key Technical Findings
+## 2. Next Steps & Future Work
 
-**Stratified Shuffling is Non-Negotiable:** The most critical lesson from this session is that for this dataset, `train_test_split` with `shuffle=True` and `stratify=y` is essential for training a profitable model. A simple chronological split, while correct for *backtesting*, is inadequate for the *training* phase due to the imbalanced nature of the buy/sell/hold labels. This finding should be considered a core principle of the project going forward.
+**The immediate next step is for a new worker to start a session on the `mt5-tick-data` branch and proceed with the following plan:**
 
-## 3. Next Steps & Future Work
-
-With the core pipeline now stable and performing at a new peak, the project is perfectly positioned to begin implementing the more advanced features outlined in the Tier 4 roadmap.
-
-The immediate next task should be to evolve the `champion_challenger.py` script into a more robust, industry-standard tool by focusing on:
-
-1.  **Purged Walk-Forward Validation:** The current backtesting method uses a single, fixed hold-out set. The next evolution should be to implement a purged, walk-forward cross-validation system. This will provide a much more rigorous and realistic assessment of the model's performance over time.
-2.  **Dynamic Feature Importance:** After each training run, the pipeline should analyze the new Champion model's feature importance (e.g., using SHAP or the built-in LightGBM importance). This will allow us to track how the model's "brain" is adapting to changing market conditions and identify features that are gaining or losing predictive power.
-
-By implementing these two features, we will move closer to the ultimate goal of a truly adaptive, self-improving trading agent.
+1.  **Build a Tick Data Processing Pipeline:** Create a new script to load the user-provided `.csv` tick data for XAUUSD. This script must parse the raw tick data and aggregate it into 5-minute OHLC bars, saving the result as a new `GLD_5m.parquet` file.
+2.  **Adapt the Hypothesis Tester:** Modify the `src/tier7/hypothesis_tester.py` script to use this new 5-minute Gold data.
+3.  **Re-Run the Hypothesis Test:** Execute the script to get a definitive, scientifically valid answer to the "London Lunch Pullback" question.
+4.  **Analyze and Proceed:** Based on the results, either engineer new features (if the hypothesis is proven) or move on to a new hypothesis (if it is disproven).
