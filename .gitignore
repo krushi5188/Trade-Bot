@@ -8,3 +8,7 @@ __pycache__/
 
 # Environment
 .env
+
+# Data
+data/processed/
+data/features/
