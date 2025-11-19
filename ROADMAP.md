@@ -93,6 +93,19 @@
 
 ---
 
+## Tier 7: High-Frequency Feature Engineering
+**Objective:** To leverage high-resolution (1-minute) tick data to engineer a new class of predictive features and train a superior challenger model.
+**Status:** COMPLETE.
+**Key Outcomes & Conclusion:**
+- A robust pipeline was built to process over 10 years of raw tick data for Gold into a clean, 1-minute resolution dataset.
+- A "Feature Factory" was created to automatically engineer two successive generations of features:
+  - **V1:** Foundational features including high-frequency rolling statistics and momentum.
+  - **V2:** More sophisticated indicators including RSI, Bollinger Bands, and tick volume velocity.
+- A new, dedicated challenger pipeline was built to train and backtest models on this high-frequency data using purged walk-forward cross-validation.
+- **Final Conclusion:** Rigorous backtesting of models trained on both V1 and V2 feature sets resulted in negative returns (-39% and -20% respectively). This is a critical and valuable finding: it proves that simply using more granular, price-derived technical indicators is **not sufficient** to find a profitable edge in the Gold market. The AI has learned that a more sophisticated approach is required. Future work must pivot to exploring fundamentally different feature classes, such as order flow imbalances, market sentiment, or inter-market correlations.
+
+---
+
 ## Tier 1 Progress Checklist (Archive)
 
 ### Foundational Setup
